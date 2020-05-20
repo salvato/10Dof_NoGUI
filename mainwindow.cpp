@@ -300,9 +300,9 @@ MainWindow::openTcpSession() {
     // if we did not find one, use IPv4 localhost
     if(ipAddress.isEmpty())
         ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
-    console.appendText(QString("Running TCP-IP server at address %1 port:%2")
-                       .arg(ipAddress)
-                       .arg(pTcpServer->serverPort()));
+    console.appendPlainText(QString("Running TCP-IP server at address %1 port:%2")
+                            .arg(ipAddress)
+                            .arg(pTcpServer->serverPort()));
     return true;
 }
 
