@@ -2,6 +2,7 @@
 
 #include <QWidget>
 #include <QTimer>
+#include <QPlainTextEdit>
 
 #include <ADXL345.h>
 #include <ITG3200.h>
@@ -12,7 +13,7 @@
 #include "utilities.h"
 
 
-QT_FORWARD_DECLARE_CLASS(QPushButton)
+QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
 QT_FORWARD_DECLARE_CLASS(PID)
 QT_FORWARD_DECLARE_CLASS(MotorController_L298)
 QT_FORWARD_DECLARE_CLASS(MotorController_BST7960)
@@ -37,6 +38,7 @@ public:
     ~MainWindow();
 
 public slots:
+    void onTimeToStart();
     void onLoopTimeElapsed();
     void onStartAccCalibration();
     void onStartGyroCalibration();
@@ -46,6 +48,7 @@ public slots:
     void onTcpClientDisconnected();
     void onTcpError(QAbstractSocket::SocketError error);
     void onReadFromServer();
+    void onAHRSerror(QString sErrorString);
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -58,7 +61,7 @@ protected:
     bool openTcpSession();
     void executeCommand(QString sMessage);
     void periodicUpdateWidgets();
-//    void readPendingDatagrams();
+    //    void readPendingDatagrams();
 
 private:
     ADXL345*  pAcc;
@@ -69,11 +72,10 @@ private:
     //MotorController_L298* pMotorController;
     MotorController_BST7960* pMotorController;
 
-    QPushButton* buttonAccCalibration;
-    QPushButton* buttonGyroCalibration;
-    QPushButton* buttonMagCalibration;
-    QPushButton* buttonStartStop;
+    QVBoxLayout* pLeftLayout;
+    QPlainTextEdit console;
 
+    QTimer startupTimer;
     QTimer loopTimer;
 
     float samplingFrequency;
@@ -120,4 +122,5 @@ private:
     double output;
     double motorSpeedFactorLeft;
     double motorSpeedFactorRight;
+    volatile bool bCanContinue;
 };

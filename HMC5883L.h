@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define HMC5883L_h
 
 
+#include <QObject>
 #include <inttypes.h>
 
 
@@ -59,10 +60,13 @@ struct MagnetometerRaw
 };
 
 
-class HMC5883L
+class HMC5883L : public QObject
 {
+    Q_OBJECT
+
 public:
     HMC5883L();
+    bool init();
 
     void ReadRawAxis(MagnetometerRaw *raw);
     void ReadScaledAxis(MagnetometerScaled *scaled);
@@ -70,12 +74,12 @@ public:
 
     int16_t SetMeasurementMode(uint8_t mode);
     int16_t SetScale(int16_t milliGauss);
-
     bool isDataReady();
-
     const char *GetErrorText(int16_t errorCode);
-
     bool isConnected();
+
+signals:
+    void error(QString sErrorString);
 
 protected:
     void Write(uint8_t address, uint8_t val);

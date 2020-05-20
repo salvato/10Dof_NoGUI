@@ -35,21 +35,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 const char* ErrorCode_1 = "Entered scale was not valid, valid gauss values are: 0.88, 1.3, 1.9, 2.5, 4.0, 4.7, 5.6, 8.1";
 
 
-HMC5883L::HMC5883L() {
+HMC5883L::HMC5883L()
+    : QObject()
+{
     m_Scale = 1;
+}
+
+
+bool
+HMC5883L::init() {
     // open device on /dev/i2c-1
     if((fd = open("/dev/i2c-1", O_RDWR)) < 0) {
-      qDebug() << QString("HMC5883L Error: Couldn't open device! %1").arg(fd);
-      exit(EXIT_FAILURE);
+        emit error(QString("HMC5883L Error: Couldn't open device %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return false;
     }
     if(ioctl(fd, I2C_SLAVE, HMC5883L_Address) == -1) {
-        qDebug() << "HMC5883L Error in ioctl()";
-        exit(EXIT_FAILURE);
+        emit error(QString("HMC5883L Errorin ioctl() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return false;
     }
     if(!isConnected()) {
-        qDebug() << "Error the Magnetometer does not respond: exiting";
-        exit(EXIT_FAILURE);
+        emit error(QString("HMC5883L Errorin Magnetometer does not respond %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return false;
     }
+    return true;
 }
 
 
@@ -159,11 +167,8 @@ void
 HMC5883L::Write(uint8_t address, uint8_t val) {
     std::array<uint8_t, 2> data{address, val};
     if(write(fd, data.data(), data.size()) != data.size()) {
-        std::string what( "write " __FILE__ "("
-                        + std::to_string(__LINE__)
-                        + ")" );
-        qDebug() << what.c_str();
-        exit(EXIT_FAILURE);
+        emit error(QString("HMC5883L Error: write() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return;
     }
 }
 
@@ -171,18 +176,12 @@ HMC5883L::Write(uint8_t address, uint8_t val) {
 void
 HMC5883L::Read(uint8_t address, int16_t length, uint8_t* buffer) {
     if(write(fd, &address, 1) != 1) {
-        std::string what( "write " __FILE__ "("
-                        + std::to_string(__LINE__)
-                        + ")" );
-        qDebug() << what.c_str();
-        exit(EXIT_FAILURE);
+        emit error(QString("HMC5883L Error: write() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return;
     }
     if(read(fd, buffer, length) != length) {
-        std::string what( "write " __FILE__ "("
-                        + std::to_string(__LINE__)
-                        + ")" );
-        qDebug() << what.c_str();
-        exit(EXIT_FAILURE);
+        emit error(QString("HMC5883L Error: read() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return;
     }
 }
 

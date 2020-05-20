@@ -6,7 +6,7 @@
 #include <QtWidgets>
 #include <QDebug>
 #include <QThread>
-#include <QPushButton>
+#include <QVBoxLayout>
 #include <QSettings>
 #include <QtNetwork/QTcpServer>
 #include <QtNetwork/QTcpSocket>
@@ -30,7 +30,7 @@
 //
 // DFRobot 10DOF :
 //      SDA on BCM 2:    pin 3 in the 40 pins GPIO connector
-//      SDL on BCM 3:    pin 5 in the 40 pins GPIO connector
+//      SCL on BCM 3:    pin 5 in the 40 pins GPIO connector
 //      Vcc on 5V Power: pin 4 in the 40 pins GPIO connector
 //      GND on GND:      pin 6 in the 40 pins GPIO connector
 //
@@ -120,15 +120,28 @@ MainWindow::MainWindow()
     , motorSpeedFactorLeft(0.6)
     , motorSpeedFactorRight(0.6)
 {
+    bCanContinue = true;
+    setpoint = 4.68;
+    samplingFrequency = 300;
+
     restoreSettings();
 
     if(!openTcpSession())
-        exit(EXIT_FAILURE);
-
+        return;
     pUdpSocket = new QUdpSocket(this);
 
-    initLayout();
-    initAHRSsensor();
+    pAcc  = new ADXL345(); // init ADXL345
+    pGyro = new ITG3200(); // init ITG3200
+    pMagn = new HMC5883L();// init HMC5883L
+    connect(pAcc, SIGNAL(error(QString)),
+            this, SLOT(onAHRSerror(QString)));
+    connect(pGyro, SIGNAL(error(QString)),
+            this, SLOT(onAHRSerror(QString)));
+    connect(pMagn, SIGNAL(error(QString)),
+            this, SLOT(onAHRSerror(QString)));
+
+    pMadgwick = new Madgwick();
+
 #if defined(L298)
     pMotorController = new MotorController_L298(PWM1_PIN, M1IN1_PIN, M1IN2_PIN,
                                                 PWM2_PIN, M2IN1_PIN, M2IN2_PIN,
@@ -139,7 +152,20 @@ MainWindow::MainWindow()
                                                    motorSpeedFactorLeft, motorSpeedFactorRight);
 #endif
     pPid = new PID(Kp, Ki, Kd, ControllerDirection);
-    setpoint = 4.68;
+
+    initLayout();
+
+    startupTimer.setSingleShot(true);
+    connect(&startupTimer, SIGNAL(timeout()),
+            this, SLOT(onTimeToStart()));
+    startupTimer.start(1000);
+}
+
+
+void
+MainWindow::onTimeToStart() {
+    initAHRSsensor();
+    if(!bCanContinue) return;
     pPid->SetSampleTime(100); // in ms
     pPid->SetOutputLimits(-255, 255);
     if(bPIDControlInProgress)
@@ -147,8 +173,6 @@ MainWindow::MainWindow()
     else
         pPid->SetMode(MANUAL);
 
-    samplingFrequency = 300;
-    pMadgwick = new Madgwick();
     pMadgwick->begin(samplingFrequency);
 
     // Consider to change to QBasicTimer that it's faster than QTimer
@@ -172,6 +196,7 @@ MainWindow::MainWindow()
     lastUpdate = micros();
     now = lastUpdate;
     loopTimer.start(int32_t(1000.0/samplingFrequency+0.5));
+    console.appendPlainText(QString("Ready to be connected\r\n"));
 }
 
 
@@ -197,6 +222,13 @@ MainWindow::closeEvent(QCloseEvent *event) {
     if(pMagn)            delete pMagn;
     if(pGyro)            delete pGyro;
     if(pAcc)             delete pAcc;
+}
+
+
+void
+MainWindow::onAHRSerror(QString sErrorString) {
+    console.appendPlainText(sErrorString);
+    bCanContinue = false;
 }
 
 
@@ -338,9 +370,8 @@ MainWindow::onNewTcpConnection() {
                 this, SLOT(onTcpError(QAbstractSocket::SocketError)));
         connect(pTcpServerConnection, SIGNAL(disconnected()),
                 this, SLOT(onTcpClientDisconnected()));
-
-//        qDebug() << QString("Connected to: %1")
-//                    .arg(pTcpServerConnection->peerAddress().toString());
+        console.appendPlainText(QString("Connected to: %1")
+                                .arg(pTcpServerConnection->peerAddress().toString()));
         t0 = micros();
     }
 }
@@ -350,8 +381,7 @@ void
 MainWindow::onTcpClientDisconnected() {
     QString sClient = pTcpServerConnection->peerAddress().toString();
     pTcpServerConnection = nullptr;
-//    qDebug() << QString("Disconnected from: %1")
-//                .arg(sClient);
+    console.appendPlainText(QString("Disconnected from: %1").arg(sClient));
 }
 
 
@@ -443,7 +473,9 @@ MainWindow::periodicUpdateWidgets() {
                           .arg(x)
                           .arg(double(input-setpoint));
             }
-            pUdpSocket->writeDatagram(sMessage.toLatin1(), pTcpServerConnection->peerAddress(), udpPort);
+            pUdpSocket->writeDatagram(sMessage.toLatin1(),
+                                      pTcpServerConnection->peerAddress(),
+                                      udpPort);
         }
     }
 }
@@ -451,6 +483,16 @@ MainWindow::periodicUpdateWidgets() {
 
 void
 MainWindow::initLayout() {
+    pLeftLayout  = new QVBoxLayout;
+    console.setReadOnly(true);
+    console.document()->setMaximumBlockCount(100);
+    QPalette p = palette();
+    p.setColor(QPalette::Base, Qt::darkBlue);
+    p.setColor(QPalette::Text, Qt::white);
+    console.setPalette(p);
+    pLeftLayout->addWidget(&console);
+    setLayout(pLeftLayout);
+
 }
 
 
@@ -462,12 +504,11 @@ MainWindow::isStationary() {
 
 void
 MainWindow::initAHRSsensor() {
-    pAcc  = new ADXL345(); // init ADXL345
-    pAcc->init(ACC_ADDR);
+    if(!pAcc->init(ACC_ADDR))
+        return;
     pAcc->setRangeSetting(2); // +/-2g. Possible values are: 2g, 4g, 8g, 16g
 
-    pGyro = new ITG3200(); // init ITG3200
-    pGyro->init(ITG3200_DEF_ADDR);
+    if(!pGyro->init(ITG3200_DEF_ADDR)) return;
     if(isStationary()) { // Gyro calibration done only when stationary
         QThread::msleep(1000);
         pGyro->zeroCalibrate(600, 10); // calibrate the ITG3200
@@ -478,7 +519,7 @@ MainWindow::initAHRSsensor() {
         pGyro->offsets[2] = GyroZOffset;
     }
 
-    pMagn = new HMC5883L();// init HMC5883L
+    if(!pMagn->init()) return;
     pMagn->SetScale(1300); // Set the scale (in milli Gauss) of the compass.
     pMagn->SetMeasurementMode(Measurement_Continuous); // Set the measurement mode to Continuous
 

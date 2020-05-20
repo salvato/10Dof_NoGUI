@@ -28,6 +28,7 @@
 #ifndef FIMU_ITG3200_h
 #define FIMU_ITG3200_h
 
+#include <QObject>
 
 #include "inttypes.h"
 #define byte uint8_t
@@ -112,18 +113,20 @@
 #define PLL_EXTERNAL32      4   // 32.768 kHz
 #define PLL_EXTERNAL19      5   // 19.2 Mhz
 
-class ITG3200 {
+class ITG3200 : public QObject
+{
+    Q_OBJECT
 
 public:
+
+    ITG3200();
+    // Gyro initialization
+    bool init(uint16_t address);
+    bool init(uint16_t address, byte _SRateDiv, byte _Range, byte _filterBW, byte _ClockSrc, bool _ITGReady, bool _INTRawDataReady);
+
     float gains[3];
     int16_t offsets[3];
     float polarities[3];
-
-    ITG3200();
-
-    // Gyro initialization
-    void init(uint16_t address);
-    void init(uint16_t address, byte _SRateDiv, byte _Range, byte _filterBW, byte _ClockSrc, bool _ITGReady, bool _INTRawDataReady);
     
     // Who Am I
     byte getDevAddr();
@@ -183,6 +186,9 @@ public:
 
     void writemem(uint8_t _addr, uint8_t _val);
     void readmem(uint8_t _addr, uint8_t _nbytes, uint8_t __buff[]);
+
+signals:
+    void error(QString sErrorString);
 
 private:
     int fd;

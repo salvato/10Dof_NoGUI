@@ -29,7 +29,9 @@ using namespace std;
 #define TO_READ (6)      // num of bytes we are going to read each time (two bytes for each axis)
 
 
-ADXL345::ADXL345() {
+ADXL345::ADXL345()
+    : QObject()
+{
     status = ADXL345_OK;
     error_code = ADXL345_NO_ERROR;
 
@@ -39,29 +41,30 @@ ADXL345::ADXL345() {
 }
 
 
-void
+bool
 ADXL345::init(int16_t address) {
     _dev_address = address;
     // open device on /dev/i2c-1
     if((fd = open("/dev/i2c-1", O_RDWR)) < 0) {
-      qDebug() << QString("ADXL345 Error: Couldn't open device! %1").arg(fd);
-      exit(EXIT_FAILURE);
+        emit error(QString("ADXL345 Error: Couldn't open device %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return false;
     }
     if(ioctl(fd, I2C_SLAVE, _dev_address) == -1) {
-        qDebug() << "ADXL345 Error in ioctl()";
-        exit(EXIT_FAILURE);
+        emit error(QString("ADXL345 Errorin ioctl() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return false;
     }
-    powerOn();
+    if(!powerOn()) return false;
     setAxisOffset(0, 0, 0);
+    return true;
 }
 
 
-void
+bool
 ADXL345::powerOn() {
     //Turning on the ADXL345
     //writeTo(ADXL345_POWER_CTL, 0);
     //writeTo(ADXL345_POWER_CTL, 16);
-    writeTo(ADXL345_POWER_CTL, 8);// Set the Measure Bit
+    return writeTo(ADXL345_POWER_CTL, 8);// Set the Measure Bit
 }
 
 
@@ -98,33 +101,29 @@ ADXL345::get_Gxyz(float *xyz){
 
 
 // Writes val to address register on device
-void
+bool
 ADXL345::writeTo(byte address, byte val) {
     std::array<uint8_t, 2> data{address, val};
     if(write(fd, data.data(), data.size()) == -1) {
-        std::string what( "write " __FILE__ "("
-                        + std::to_string(__LINE__)
-                        + ")" );
-        qDebug() << what.c_str();
-        exit(EXIT_FAILURE);
+        emit error(QString("ADXL345 Error: write() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return false;
     }
+    return true;
 }
 
 
 // Reads num bytes starting from address register on device in to _buff array
-void
+bool
 ADXL345::readFrom(byte address, int16_t num, byte _buff[]) {
     if(write(fd, &address, sizeof(address)) == -1) {
-        std::string what( "write " __FILE__ "("
-                        + std::to_string(__LINE__)
-                        + ")" );
-        qDebug() << what.c_str();
-        exit(EXIT_FAILURE);
+        emit error(QString("ADXL345 Error: write() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return false;
     }
     if(read(fd, _buff, num) != num) {
-        status = ADXL345_ERROR;
-        error_code = ADXL345_READ_ERROR;
+        emit error(QString("ADXL345 Error: read() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return false;
     }
+    return true;
 }
 
 
@@ -798,13 +797,12 @@ ADXL345::printAllRegister() {
     byte _b;
     QString sString;
     readFrom(0x00, 1, &_b);
-    sString = QString("0x00: %1").arg(_b, 0, 2, QLatin1Char('0'));
-    qDebug() << sString;
+    sString = QString("0x00: %1\r\n").arg(_b, 0, 2, QLatin1Char('0'));
     int16_t i;
     for(i=29; i<=57; i++) {
         readFrom(i, 1, &_b);
-        sString = QString("0x%1: %2").arg(i, 2, 16, QLatin1Char('0')).arg(_b, 8, 2, QLatin1Char('0'));
-        qDebug() << sString;
+        sString += QString("0x%1: %2\r\n").arg(i, 2, 16, QLatin1Char('0')).arg(_b, 8, 2, QLatin1Char('0'));
+        emit error(sString);
     }
 }
 

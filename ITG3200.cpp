@@ -30,19 +30,21 @@
 using namespace std;
 
 
-ITG3200::ITG3200() {
+ITG3200::ITG3200()
+    : QObject()
+{
     setGains(1.0, 1.0, 1.0);
     setOffsets(0.0, 0.0, 0.0);
     setRevPolarity(false, false, false);
 }
 
 
-void
+bool
 ITG3200::init(uint16_t  address) {
     // Uncomment or change your default ITG3200 initialization
 
     // fast sample rate - divisor = 0 filter = 0 clocksrc = 0, 1, 2, or 3  (raw values)
-    init(address, NOSRDIVIDER, RANGE2000, BW256_SR8, PLL_XGYRO_REF, true, true);
+    return init(address, NOSRDIVIDER, RANGE2000, BW256_SR8, PLL_XGYRO_REF, true, true);
 
     // slow sample rate - divisor = 0  filter = 1,2,3,4,5, or 6  clocksrc = 0, 1, 2, or 3  (raw values)
     //init(address, NOSRDIVIDER, RANGE2000, BW010_SR1, INTERNALOSC, true, true);
@@ -55,19 +57,20 @@ ITG3200::init(uint16_t  address) {
 }
 
 
-void
+bool
 ITG3200::init(uint16_t address, byte _SRateDiv, byte _Range, byte _filterBW, byte _ClockSrc, bool _ITGReady, bool _INTRawDataReady) {
     _dev_address = address;
     // open device on /dev/i2c-1
     if((fd = open("/dev/i2c-1", O_RDWR)) < 0) {
-      qDebug() << QString("ADXL345 Error: Couldn't open device! %1").arg(fd);
-      exit(EXIT_FAILURE);
+        emit error(QString("ITG3200 Error: Couldn't open device %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return false;
     }
     // start transmission to device
     if(ioctl(fd, I2C_SLAVE, _dev_address) == -1) {
-        qDebug() << "ADXL345 Error in ioctl()";
-        exit(EXIT_FAILURE);
+        emit error(QString("ITG3200 Errorin ioctl() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return false;
     }
+    QThread::msleep(GYROSTART_UP_DELAY);  // startup
     setSampleRateDiv(_SRateDiv);
     QThread::msleep(GYROSTART_UP_DELAY);  // startup
     setFSRange(_Range);
@@ -80,6 +83,7 @@ ITG3200::init(uint16_t address, byte _SRateDiv, byte _Range, byte _filterBW, byt
     QThread::msleep(GYROSTART_UP_DELAY);  // startup
     setRawDataReady(_INTRawDataReady);
     QThread::msleep(GYROSTART_UP_DELAY);  // startup
+    return true;
 }
 
 
@@ -415,11 +419,8 @@ void
 ITG3200::writemem(uint8_t _addr, uint8_t _val) {
     std::array<uint8_t, 2> data{_addr, _val};
     if(write(fd, data.data(), data.size()) == -1) {
-        std::string what( "write " __FILE__ "("
-                        + std::to_string(__LINE__)
-                        + ")" );
-        qDebug() << what.c_str();
-        exit(EXIT_FAILURE);
+        emit error(QString("ITG3200 Error: write() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return;
     }
 }
 
@@ -428,19 +429,13 @@ void
 ITG3200::readmem(uint8_t _addr, uint8_t _nbytes, uint8_t __buff[]) {
     // sends register address to read from
     if(write(fd, &_addr, sizeof(_addr)) == -1) {
-        std::string what( "write " __FILE__ "("
-                        + std::to_string(__LINE__)
-                        + ")" );
-        qDebug() << what.c_str();
-        exit(EXIT_FAILURE);
+        emit error(QString("ITG3200 Error: write() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return;
     }
     // receive DATA
     if(read(fd, __buff, _nbytes) != _nbytes) {
-        std::string what( "read " __FILE__ "("
-                        + std::to_string(__LINE__)
-                        + ")" );
-        qDebug() << what.c_str();
-        exit(EXIT_FAILURE);
+        emit error(QString("HMC5883L Error: read() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        return;
     }
 }
 

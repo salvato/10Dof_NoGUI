@@ -16,6 +16,7 @@
 #ifndef FIMU_ADXL345_h
 #define FIMU_ADXL345_h
 
+#include <QObject>
 #include "inttypes.h"
 #define byte uint8_t
 
@@ -96,16 +97,18 @@
 #define ADXL345_READ_ERROR 1 // problem reading accel
 #define ADXL345_BAD_ARG    2 // bad method argument
 
-class ADXL345
+class ADXL345 : public QObject
 {
+    Q_OBJECT
+
 public:
     bool status;           // set when error occurs
                            // see error code for details
     byte error_code;       // Initial state
 
     ADXL345();
-    void init(int16_t address);
-    void powerOn();
+    bool init(int16_t address);
+    bool powerOn();
     void readAccel(int16_t *xyx);
     void readAccel(int16_t *x, int16_t *y, int16_t *z);
     void get_Gxyz(float *xyz);
@@ -195,11 +198,14 @@ public:
     bool getJustifyBit();
     void setJustifyBit(bool justifyBit);
     void printAllRegister();
-    void writeTo(byte address, byte val);
+    bool writeTo(byte address, byte val);
+    
+signals:
+    void error(QString sErrorString);
 
 private:
     int fd;
-    void readFrom(byte address, int16_t num, byte buff[]);
+    bool readFrom(byte address, int16_t num, byte buff[]);
     void setRegisterBit(byte regAdress, int16_t bitPos, bool state);
     bool getRegisterBit(byte regAdress, int16_t bitPos);
     byte _buff[6];    //6 bytes buffer for saving data read from the device
