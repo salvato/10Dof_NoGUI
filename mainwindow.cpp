@@ -280,7 +280,7 @@ bool
 MainWindow::openTcpSession() {
     pTcpServer = new QTcpServer(this);
     if(!pTcpServer->listen(QHostAddress::Any, serverPort)) {
-        qDebug()  << "TCP-IP Unable to start listen()";
+        console.appendPlainText(QString("TCP-IP Unable to start listen()"));
         return false;
     }
     connect(pTcpServer, SIGNAL(newConnection()),
@@ -300,9 +300,9 @@ MainWindow::openTcpSession() {
     // if we did not find one, use IPv4 localhost
     if(ipAddress.isEmpty())
         ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
-//    qDebug() << QString("Running TCP-IP server at address %1 port:%2")
-//                .arg(ipAddress)
-//                .arg(pTcpServer->serverPort());
+    console.appendText(QString("Running TCP-IP server at address %1 port:%2")
+                       .arg(ipAddress)
+                       .arg(pTcpServer->serverPort()));
     return true;
 }
 
@@ -310,53 +310,53 @@ MainWindow::openTcpSession() {
 void
 MainWindow::onTcpError(QAbstractSocket::SocketError error) {
     if(error == QAbstractSocket::ConnectionRefusedError)
-        qDebug() << "The connection was refused by the peer (or timed out).";
+        console.appendPlainText(QString("The connection was refused by the peer (or timed out)."));
     else if(error == QAbstractSocket::RemoteHostClosedError) {
-        qDebug() << " The remote host closed the connection.";
+        console.appendPlainText(QString(" The remote host closed the connection."));
     } else if(error == QAbstractSocket::HostNotFoundError)
-        qDebug() << " The host address was not found.";
+        console.appendPlainText(QString(" The host address was not found."));
     else if(error == QAbstractSocket::SocketAccessError)
-        qDebug() << " The socket operation failed because the application lacked the required privileges.";
+        console.appendPlainText(QString(" The socket operation failed because the application lacked the required privileges."));
     else if(error == QAbstractSocket::SocketResourceError)
-        qDebug() << " The local system ran out of resources (e.g., too many sockets).";
+        console.appendPlainText(QString(" The local system ran out of resources (e.g., too many sockets)."));
     else if(error == QAbstractSocket::SocketTimeoutError)
-        qDebug() << " The socket operation timed out.";
+        console.appendPlainText(QString(" The socket operation timed out."));
     else if(error == QAbstractSocket::DatagramTooLargeError)
-        qDebug() << " The datagram was larger than the operating system's limit (which can be as low as 8192 bytes).";
+        console.appendPlainText(QString(" The datagram was larger than the operating system's limit (which can be as low as 8192 bytes)."));
     else if(error == QAbstractSocket::NetworkError)
-        qDebug() << " An error occurred with the network (e.g., the network cable was accidentally plugged out).";
+        console.appendPlainText(QString(" An error occurred with the network (e.g., the network cable was accidentally plugged out)."));
     else if(error == QAbstractSocket::AddressInUseError)
-        qDebug() << " The address specified to QAbstractSocket::bind() is already in use and was set to be exclusive.";
+        console.appendPlainText(QString(" The address specified to QAbstractSocket::bind() is already in use and was set to be exclusive."));
     else if(error == QAbstractSocket::SocketAddressNotAvailableError)
-        qDebug() << " The address specified to QAbstractSocket::bind() does not belong to the host.";
+        console.appendPlainText(QString(" The address specified to QAbstractSocket::bind() does not belong to the host."));
     else if(error == QAbstractSocket::UnsupportedSocketOperationError)
-        qDebug() << " The requested socket operation is not supported by the local operating system (e.g., lack of IPv6 support).";
+        console.appendPlainText(QString(" The requested socket operation is not supported by the local operating system (e.g., lack of IPv6 support)."));
     else if(error == QAbstractSocket::ProxyAuthenticationRequiredError)
-        qDebug() << " The socket is using a proxy, and the proxy requires authentication.";
+        console.appendPlainText(QString(" The socket is using a proxy, and the proxy requires authentication."));
     else if(error == QAbstractSocket::SslHandshakeFailedError)
-        qDebug() << " The SSL/TLS handshake failed, so the connection was closed (only used in QSslSocket)";
+        console.appendPlainText(QString(" The SSL/TLS handshake failed, so the connection was closed (only used in QSslSocket)"));
     else if(error == QAbstractSocket::UnfinishedSocketOperationError)
-        qDebug() << " Used by QAbstractSocketEngine only, The last operation attempted has not finished yet (still in progress in the background).";
+        console.appendPlainText(QString(" Used by QAbstractSocketEngine only, The last operation attempted has not finished yet (still in progress in the background)."));
     else if(error == QAbstractSocket::ProxyConnectionRefusedError)
-        qDebug() << " Could not contact the proxy server because the connection to that server was denied";
+        console.appendPlainText(QString(" Could not contact the proxy server because the connection to that server was denied"));
     else if(error == QAbstractSocket::ProxyConnectionClosedError)
-        qDebug() << " The connection to the proxy server was closed unexpectedly (before the connection to the final peer was established)";
+        console.appendPlainText(QString(" The connection to the proxy server was closed unexpectedly (before the connection to the final peer was established)"));
     else if(error == QAbstractSocket::ProxyConnectionTimeoutError)
-        qDebug() << " The connection to the proxy server timed out or the proxy server stopped responding in the authentication phase.";
+        console.appendPlainText(QString(" The connection to the proxy server timed out or the proxy server stopped responding in the authentication phase."));
     else if(error == QAbstractSocket::ProxyNotFoundError)
-        qDebug() << " The proxy address set with setProxy() (or the application proxy) was not found.";
+        console.appendPlainText(QString(" The proxy address set with setProxy() (or the application proxy) was not found."));
     else if(error == QAbstractSocket::ProxyProtocolError)
-        qDebug() << " The connection negotiation with the proxy server failed, because the response from the proxy server could not be understood.";
+        console.appendPlainText(QString(" The connection negotiation with the proxy server failed, because the response from the proxy server could not be understood."));
     else if(error == QAbstractSocket::OperationError)
-        qDebug() << " An operation was attempted while the socket was in a state that did not permit it.";
+        console.appendPlainText(QString(" An operation was attempted while the socket was in a state that did not permit it."));
     else if(error == QAbstractSocket::SslInternalError)
-        qDebug() << " The SSL library being used reported an internal error. This is probably the result of a bad installation or misconfiguration of the library.";
+        console.appendPlainText(QString(" The SSL library being used reported an internal error. This is probably the result of a bad installation or misconfiguration of the library."));
     else if(error == QAbstractSocket::SslInvalidUserDataError)
-        qDebug() << " Invalid data (certificate, key, cypher, etc.) was provided and its use resulted in an error in the SSL library.";
+        console.appendPlainText(QString(" Invalid data (certificate, key, cypher, etc.) was provided and its use resulted in an error in the SSL library."));
     else if(error == QAbstractSocket::TemporaryError)
-        qDebug() << " A temporary error occurred (e.g., operation would block and socket is non-blocking).";
+        console.appendPlainText(QString(" A temporary error occurred (e.g., operation would block and socket is non-blocking)."));
     else if(error == QAbstractSocket::UnknownSocketError)
-        qDebug() << " An unidentified error occurred.";
+        console.appendPlainText(QString(" An unidentified error occurred."));
 }
 
 
