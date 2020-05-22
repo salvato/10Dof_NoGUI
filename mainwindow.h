@@ -1,9 +1,8 @@
 #pragma once
 
-#include <QWidget>
 #include <QTimer>
-#include <QPlainTextEdit>
 
+#include <QCoreApplication>
 #include <ADXL345.h>
 #include <ITG3200.h>
 #include <HMC5883L.h>
@@ -13,7 +12,6 @@
 #include "utilities.h"
 
 
-QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
 QT_FORWARD_DECLARE_CLASS(PID)
 QT_FORWARD_DECLARE_CLASS(MotorController_L298)
 QT_FORWARD_DECLARE_CLASS(MotorController_BST7960)
@@ -29,12 +27,12 @@ QT_FORWARD_DECLARE_CLASS(QUdpSocket)
 // HMC5843 address is fixed so don't bother to define it
 
 
-class MainWindow : public QWidget
+class MainWindow : public QCoreApplication
 {
     Q_OBJECT
 
 public:
-    MainWindow();
+    MainWindow(int &argc, char **argv);
     ~MainWindow();
 
 public slots:
@@ -51,8 +49,6 @@ public slots:
     void onAHRSerror(QString sErrorString);
 
 protected:
-    void closeEvent(QCloseEvent *event);
-    void keyPressEvent(QKeyEvent *event);
     void initAHRSsensor();
     void initLayout();
     void restoreSettings();
@@ -71,9 +67,6 @@ private:
     PID*      pPid;
     //MotorController_L298* pMotorController;
     MotorController_BST7960* pMotorController;
-
-    QVBoxLayout* pLeftLayout;
-    QPlainTextEdit console;
 
     QTimer startupTimer;
     QTimer loopTimer;

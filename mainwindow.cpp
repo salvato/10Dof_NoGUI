@@ -1,12 +1,17 @@
+// To set the I2C speed @ 400KHz:
+// sudo nano /boot/config.txt
+// find the line with: dtparam=i2c_arm=on
+// and change in     : dtparam=i2c_arm=on,i2c_arm_baudrate=400000
+
+
 //#define L298
 #define BST760
 
 
 #include "mainwindow.h"
-#include <QtWidgets>
+
 #include <QDebug>
 #include <QThread>
-#include <QVBoxLayout>
 #include <QSettings>
 #include <QtNetwork/QTcpServer>
 #include <QtNetwork/QTcpSocket>
@@ -98,8 +103,9 @@
 
 
 
-MainWindow::MainWindow()
-    : pAcc(nullptr)
+MainWindow::MainWindow(int &argc, char **argv)
+    : QCoreApplication(argc, argv)
+    , pAcc(nullptr)
     , pGyro(nullptr)
     , pMagn(nullptr)
     , pMadgwick(nullptr)
@@ -153,8 +159,6 @@ MainWindow::MainWindow()
 #endif
     pPid = new PID(Kp, Ki, Kd, ControllerDirection);
 
-    initLayout();
-
     startupTimer.setSingleShot(true);
     connect(&startupTimer, SIGNAL(timeout()),
             this, SLOT(onTimeToStart()));
@@ -196,17 +200,11 @@ MainWindow::onTimeToStart() {
     lastUpdate = micros();
     now = lastUpdate;
     loopTimer.start(int32_t(1000.0/samplingFrequency+0.5));
-    console.appendPlainText(QString("Ready to be connected\r\n"));
+    qDebug() << QString("Ready to be connected");
 }
 
 
 MainWindow::~MainWindow() {
-}
-
-
-void
-MainWindow::closeEvent(QCloseEvent *event) {
-    Q_UNUSED(event)
     pMotorController->stopMoving();
     loopTimer.stop();
 
@@ -227,7 +225,7 @@ MainWindow::closeEvent(QCloseEvent *event) {
 
 void
 MainWindow::onAHRSerror(QString sErrorString) {
-    console.appendPlainText(sErrorString);
+    qDebug() << sErrorString;
     bCanContinue = false;
 }
 
@@ -236,8 +234,6 @@ void
 MainWindow::restoreSettings() {
     QSettings settings;
 
-    // Restore Geometry and State of the window
-    restoreGeometry(settings.value("Geometry").toByteArray());
     // Gyroscope
     GyroXOffset = settings.value("GyroXOffset", 1.0).toFloat();
     GyroYOffset = settings.value("GyroYOffset", 1.0).toFloat();
@@ -258,8 +254,6 @@ void
 MainWindow::saveSettings() {
     QSettings settings;
 
-    // Window Position and Size
-    settings.setValue("Geometry", saveGeometry());
     // Gyroscope
     settings.setValue("GyroXOffset", pGyro->offsets[0]);
     settings.setValue("GyroYOffset", pGyro->offsets[1]);
@@ -280,7 +274,7 @@ bool
 MainWindow::openTcpSession() {
     pTcpServer = new QTcpServer(this);
     if(!pTcpServer->listen(QHostAddress::Any, serverPort)) {
-        console.appendPlainText(QString("TCP-IP Unable to start listen()"));
+        qDebug() << QString("TCP-IP Unable to start listen()");
         return false;
     }
     connect(pTcpServer, SIGNAL(newConnection()),
@@ -300,9 +294,9 @@ MainWindow::openTcpSession() {
     // if we did not find one, use IPv4 localhost
     if(ipAddress.isEmpty())
         ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
-    console.appendPlainText(QString("Running TCP-IP server at address %1 port:%2")
+    qDebug() << QString("Running TCP-IP server at address %1 port:%2")
                             .arg(ipAddress)
-                            .arg(pTcpServer->serverPort()));
+                            .arg(pTcpServer->serverPort());
     return true;
 }
 
@@ -310,53 +304,53 @@ MainWindow::openTcpSession() {
 void
 MainWindow::onTcpError(QAbstractSocket::SocketError error) {
     if(error == QAbstractSocket::ConnectionRefusedError)
-        console.appendPlainText(QString("The connection was refused by the peer (or timed out)."));
+        qDebug() << QString("The connection was refused by the peer (or timed out).");
     else if(error == QAbstractSocket::RemoteHostClosedError) {
-        console.appendPlainText(QString(" The remote host closed the connection."));
+        qDebug() << QString("The remote host closed the connection.");
     } else if(error == QAbstractSocket::HostNotFoundError)
-        console.appendPlainText(QString(" The host address was not found."));
+        qDebug() << QString("The host address was not found.");
     else if(error == QAbstractSocket::SocketAccessError)
-        console.appendPlainText(QString(" The socket operation failed because the application lacked the required privileges."));
+        qDebug() << QString("The socket operation failed because the application lacked the required privileges.");
     else if(error == QAbstractSocket::SocketResourceError)
-        console.appendPlainText(QString(" The local system ran out of resources (e.g., too many sockets)."));
+        qDebug() << QString("The local system ran out of resources (e.g., too many sockets).");
     else if(error == QAbstractSocket::SocketTimeoutError)
-        console.appendPlainText(QString(" The socket operation timed out."));
+        qDebug() << QString("The socket operation timed out.");
     else if(error == QAbstractSocket::DatagramTooLargeError)
-        console.appendPlainText(QString(" The datagram was larger than the operating system's limit (which can be as low as 8192 bytes)."));
+        qDebug() << QString("The datagram was larger than the operating system's limit (which can be as low as 8192 bytes).");
     else if(error == QAbstractSocket::NetworkError)
-        console.appendPlainText(QString(" An error occurred with the network (e.g., the network cable was accidentally plugged out)."));
+        qDebug() << QString("An error occurred with the network (e.g., the network cable was accidentally plugged out).");
     else if(error == QAbstractSocket::AddressInUseError)
-        console.appendPlainText(QString(" The address specified to QAbstractSocket::bind() is already in use and was set to be exclusive."));
+        qDebug() << QString("The address specified to QAbstractSocket::bind() is already in use and was set to be exclusive.");
     else if(error == QAbstractSocket::SocketAddressNotAvailableError)
-        console.appendPlainText(QString(" The address specified to QAbstractSocket::bind() does not belong to the host."));
+        qDebug() << QString("The address specified to QAbstractSocket::bind() does not belong to the host.");
     else if(error == QAbstractSocket::UnsupportedSocketOperationError)
-        console.appendPlainText(QString(" The requested socket operation is not supported by the local operating system (e.g., lack of IPv6 support)."));
+        qDebug() << QString("The requested socket operation is not supported by the local operating system (e.g., lack of IPv6 support).");
     else if(error == QAbstractSocket::ProxyAuthenticationRequiredError)
-        console.appendPlainText(QString(" The socket is using a proxy, and the proxy requires authentication."));
+        qDebug() << QString("The socket is using a proxy, and the proxy requires authentication.");
     else if(error == QAbstractSocket::SslHandshakeFailedError)
-        console.appendPlainText(QString(" The SSL/TLS handshake failed, so the connection was closed (only used in QSslSocket)"));
+        qDebug() << QString("The SSL/TLS handshake failed, so the connection was closed (only used in QSslSocket)");
     else if(error == QAbstractSocket::UnfinishedSocketOperationError)
-        console.appendPlainText(QString(" Used by QAbstractSocketEngine only, The last operation attempted has not finished yet (still in progress in the background)."));
+        qDebug() << QString("Used by QAbstractSocketEngine only, The last operation attempted has not finished yet (still in progress in the background).");
     else if(error == QAbstractSocket::ProxyConnectionRefusedError)
-        console.appendPlainText(QString(" Could not contact the proxy server because the connection to that server was denied"));
+        qDebug() << QString("Could not contact the proxy server because the connection to that server was denied");
     else if(error == QAbstractSocket::ProxyConnectionClosedError)
-        console.appendPlainText(QString(" The connection to the proxy server was closed unexpectedly (before the connection to the final peer was established)"));
+        qDebug() << QString("The connection to the proxy server was closed unexpectedly (before the connection to the final peer was established)");
     else if(error == QAbstractSocket::ProxyConnectionTimeoutError)
-        console.appendPlainText(QString(" The connection to the proxy server timed out or the proxy server stopped responding in the authentication phase."));
+        qDebug() << QString("The connection to the proxy server timed out or the proxy server stopped responding in the authentication phase.");
     else if(error == QAbstractSocket::ProxyNotFoundError)
-        console.appendPlainText(QString(" The proxy address set with setProxy() (or the application proxy) was not found."));
+        qDebug() << QString("The proxy address set with setProxy() (or the application proxy) was not found.");
     else if(error == QAbstractSocket::ProxyProtocolError)
-        console.appendPlainText(QString(" The connection negotiation with the proxy server failed, because the response from the proxy server could not be understood."));
+        qDebug() << QString("The connection negotiation with the proxy server failed, because the response from the proxy server could not be understood.");
     else if(error == QAbstractSocket::OperationError)
-        console.appendPlainText(QString(" An operation was attempted while the socket was in a state that did not permit it."));
+        qDebug() << QString("An operation was attempted while the socket was in a state that did not permit it.");
     else if(error == QAbstractSocket::SslInternalError)
-        console.appendPlainText(QString(" The SSL library being used reported an internal error. This is probably the result of a bad installation or misconfiguration of the library."));
+        qDebug() << QString("The SSL library being used reported an internal error. This is probably the result of a bad installation or misconfiguration of the library.");
     else if(error == QAbstractSocket::SslInvalidUserDataError)
-        console.appendPlainText(QString(" Invalid data (certificate, key, cypher, etc.) was provided and its use resulted in an error in the SSL library."));
+        qDebug() << QString("Invalid data (certificate, key, cypher, etc.) was provided and its use resulted in an error in the SSL library.");
     else if(error == QAbstractSocket::TemporaryError)
-        console.appendPlainText(QString(" A temporary error occurred (e.g., operation would block and socket is non-blocking)."));
+        qDebug() << QString("A temporary error occurred (e.g., operation would block and socket is non-blocking).");
     else if(error == QAbstractSocket::UnknownSocketError)
-        console.appendPlainText(QString(" An unidentified error occurred."));
+        qDebug() << QString("An unidentified error occurred.");
 }
 
 
@@ -370,8 +364,8 @@ MainWindow::onNewTcpConnection() {
                 this, SLOT(onTcpError(QAbstractSocket::SocketError)));
         connect(pTcpServerConnection, SIGNAL(disconnected()),
                 this, SLOT(onTcpClientDisconnected()));
-        console.appendPlainText(QString("Connected to: %1")
-                                .arg(pTcpServerConnection->peerAddress().toString()));
+        qDebug() << QString("Connected to: %1")
+                                .arg(pTcpServerConnection->peerAddress().toString());
         t0 = micros();
     }
 }
@@ -381,7 +375,7 @@ void
 MainWindow::onTcpClientDisconnected() {
     QString sClient = pTcpServerConnection->peerAddress().toString();
     pTcpServerConnection = nullptr;
-    console.appendPlainText(QString("Disconnected from: %1").arg(sClient));
+    qDebug() << QString("Disconnected from: %1").arg(sClient);
 }
 
 
@@ -481,21 +475,6 @@ MainWindow::periodicUpdateWidgets() {
 }
 
 
-void
-MainWindow::initLayout() {
-    pLeftLayout  = new QVBoxLayout;
-    console.setReadOnly(true);
-    console.document()->setMaximumBlockCount(100);
-    QPalette p = palette();
-    p.setColor(QPalette::Base, Qt::darkBlue);
-    p.setColor(QPalette::Text, Qt::white);
-    console.setPalette(p);
-    pLeftLayout->addWidget(&console);
-    setLayout(pLeftLayout);
-
-}
-
-
 bool
 MainWindow::isStationary() {
     return false;
@@ -524,15 +503,6 @@ MainWindow::initAHRSsensor() {
     pMagn->SetMeasurementMode(Measurement_Continuous); // Set the measurement mode to Continuous
 
     //bmp085Calibration(); // init barometric pressure sensor
-}
-
-
-void
-MainWindow::keyPressEvent(QKeyEvent *e) {
-  if(e->key() == Qt::Key_Escape)
-    close();
-  else
-    QWidget::keyPressEvent(e);
 }
 
 

@@ -1,10 +1,11 @@
 QT += core
-QT += gui
-QT += widgets
-Qt += multimedia
+Qt += network
+QT -= gui
+
+CONFIG += c++11 console
+CONFIG -= app_bundle
 
 TARGET = 10Dof_NoGUI
-TEMPLATE = app
 
 DEFINES += QT_DEPRECATED_WARNINGS
 
@@ -35,9 +36,4 @@ HEADERS += utilities.h
 LIBS += -lpigpiod_if2 # To include libpigpiod_if2.so from /usr/local/lib
 LIBS += -lQt5Network
 
-FORMS +=
-
-RESOURCES +=
-
-DISTFILES += Inertial-Frame.png \
 DISTFILES += .gitignore
