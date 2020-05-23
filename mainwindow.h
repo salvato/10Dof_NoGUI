@@ -8,6 +8,7 @@
 #include <HMC5883L.h>
 #include <MadgwickAHRS.h>
 #include <QtNetwork/QAbstractSocket>
+#include <QSettings>
 
 #include "utilities.h"
 
@@ -60,6 +61,7 @@ protected:
     //    void readPendingDatagrams();
 
 private:
+    QSettings settings;
     ADXL345*  pAcc;
     ITG3200*  pGyro;
     HMC5883L* pMagn;

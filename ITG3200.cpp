@@ -67,7 +67,7 @@ ITG3200::init(uint16_t address, byte _SRateDiv, byte _Range, byte _filterBW, byt
     }
     // start transmission to device
     if(ioctl(fd, I2C_SLAVE, _dev_address) == -1) {
-        emit error(QString("ITG3200 Errorin ioctl() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        emit error(QString("ITG3200 Error in ioctl() %1 (%2)").arg(__FILE__).arg(__LINE__));
         return false;
     }
     QThread::msleep(GYROSTART_UP_DELAY);  // startup
@@ -284,16 +284,17 @@ ITG3200::setOffsets(int16_t _Xoffset, int16_t _Yoffset, int16_t _Zoffset) {
     offsets[0] = _Xoffset;
     offsets[1] = _Yoffset;
     offsets[2] = _Zoffset;
+    qDebug() << "Gyro offsets" << _Xoffset << _Yoffset << _Zoffset;
 }
 
 
 void
-ITG3200::zeroCalibrate(uint16_t totSamples, uint16_t sampleDelayMS) {
+ITG3200::zeroCalibrate(uint16_t totSamples) {
     int16_t xyz[3];
     float tmpOffsets[] = {0.0f, 0.0f, 0.0f};
 
     for(uint16_t i=0; i<totSamples; i++) {
-        QThread::msleep(sampleDelayMS);
+        while(!isRawDataReady()){}
         readGyroRaw(xyz);
         tmpOffsets[0] += xyz[0];
         tmpOffsets[1] += xyz[1];

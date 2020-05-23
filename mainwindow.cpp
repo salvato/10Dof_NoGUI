@@ -12,7 +12,6 @@
 
 #include <QDebug>
 #include <QThread>
-#include <QSettings>
 #include <QtNetwork/QTcpServer>
 #include <QtNetwork/QTcpSocket>
 #include <QtNetwork/QHostAddress>
@@ -232,8 +231,6 @@ MainWindow::onAHRSerror(QString sErrorString) {
 
 void
 MainWindow::restoreSettings() {
-    QSettings settings;
-
     // Gyroscope
     GyroXOffset = settings.value("GyroXOffset", 1.0).toFloat();
     GyroYOffset = settings.value("GyroYOffset", 1.0).toFloat();
@@ -252,8 +249,6 @@ MainWindow::restoreSettings() {
 
 void
 MainWindow::saveSettings() {
-    QSettings settings;
-
     // Gyroscope
     settings.setValue("GyroXOffset", pGyro->offsets[0]);
     settings.setValue("GyroYOffset", pGyro->offsets[1]);
@@ -376,6 +371,10 @@ MainWindow::onTcpClientDisconnected() {
     QString sClient = pTcpServerConnection->peerAddress().toString();
     pTcpServerConnection = nullptr;
     qDebug() << QString("Disconnected from: %1").arg(sClient);
+    loopTimer.stop();
+    pGyro->zeroCalibrate(600);
+    saveSettings();
+    loopTimer.start(int32_t(1000.0/samplingFrequency+0.5));
 }
 
 
@@ -490,12 +489,10 @@ MainWindow::initAHRSsensor() {
     if(!pGyro->init(ITG3200_DEF_ADDR)) return;
     if(isStationary()) { // Gyro calibration done only when stationary
         QThread::msleep(1000);
-        pGyro->zeroCalibrate(600, 10); // calibrate the ITG3200
+        pGyro->zeroCalibrate(600); // calibrate the ITG3200
     }
     else {
-        pGyro->offsets[0] = GyroXOffset;
-        pGyro->offsets[1] = GyroYOffset;
-        pGyro->offsets[2] = GyroZOffset;
+        pGyro->setOffsets(GyroXOffset, GyroYOffset, GyroZOffset);
     }
 
     if(!pMagn->init()) return;
