@@ -7,7 +7,7 @@ main(int argc, char *argv[]) {
 
     QCoreApplication::setOrganizationDomain("Gabriele.Salvato");
     QCoreApplication::setOrganizationName("Gabriele.Salvato");
-    QCoreApplication::setApplicationName("10DOF");
+    QCoreApplication::setApplicationName("10DOF_NoGUI");
     QCoreApplication::setApplicationVersion("0.1");
 
     return app.exec();

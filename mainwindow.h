@@ -27,6 +27,9 @@ QT_FORWARD_DECLARE_CLASS(QUdpSocket)
 #define ITG3200_DEF_ADDR ITG3200_ADDR_AD0_LOW  // AD0 connected to GND
 // HMC5843 address is fixed so don't bother to define it
 
+//#define L298
+#define BST760
+
 
 class MainWindow : public QCoreApplication
 {
@@ -35,9 +38,9 @@ class MainWindow : public QCoreApplication
 public:
     MainWindow(int &argc, char **argv);
     ~MainWindow();
+    int  exec();
 
 public slots:
-    void onTimeToStart();
     void onLoopTimeElapsed();
     void onStartAccCalibration();
     void onStartGyroCalibration();
@@ -67,13 +70,17 @@ private:
     HMC5883L* pMagn;
     Madgwick* pMadgwick;
     PID*      pPid;
-    //MotorController_L298* pMotorController;
+#if defined(L298)
+    MotorController_L298* pMotorController;
+#elif defined(BST760)
     MotorController_BST7960* pMotorController;
+#else
+    #error "Undefined Motor Controller"
+#endif
 
-    QTimer startupTimer;
     QTimer loopTimer;
 
-    float samplingFrequency;
+    float ahrsSamplingFrequency;
     float values[9];
     float angles[3]; // yaw pitch roll
     float heading;
@@ -86,7 +93,8 @@ private:
     uint64_t lastUpdate;
     uint64_t now;
     uint64_t t0;
-    float delta;
+    float deltaTime;
+
     float q0, q1, q2, q3;
     double angleX, angleY, angleZ;
     double avgX, avgY, avgZ;

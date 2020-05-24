@@ -1,36 +1,14 @@
+//===============================================================
 // To set the I2C speed @ 400KHz:
 // sudo nano /boot/config.txt
 // find the line with: dtparam=i2c_arm=on
 // and change in     : dtparam=i2c_arm=on,i2c_arm_baudrate=400000
+//===============================================================
 
 
-//#define L298
-#define BST760
-
-
-#include "mainwindow.h"
-
-#include <QDebug>
-#include <QThread>
-#include <QtNetwork/QTcpServer>
-#include <QtNetwork/QTcpSocket>
-#include <QtNetwork/QHostAddress>
-#include <QtNetwork/QNetworkInterface>
-#include <QtNetwork/QUdpSocket>
-
-
-#include "PID_v1.h"
-#if defined(L298)
-    #include "MotorController_L298.h"
-#elif defined(BST760)
-    #include "MotorController_BST7960.h"
-#else
-    #error "Undefined Motor Controller"
-#endif
-
-#include <cmath>
-
-// Hardware Connections:
+//=======================
+// Hardware Connections :
+//=======================
 //
 // DFRobot 10DOF :
 //      SDA on BCM 2:    pin 3 in the 40 pins GPIO connector
@@ -44,28 +22,7 @@
 // +5V on pins 2 or 4 in the 40 pin GPIO connector.
 // GND on pins 6, 9, 14, 20, 25, 30, 34 or 39
 // in the 40 pin GPIO connector.
-
-#if defined(L298)
-    // L298 MotorController
-    #define PWM1_PIN  12 // on BCM12: Pin 32 in the 40 pin GPIO connector.
-    #define M1IN1_PIN 17 // on BCM17: Pin 11 in the 40 pin GPIO connector.
-    #define M1IN2_PIN 27 // on BCM27: Pin 13 in the 40 pin GPIO connector.
-    #define PWM2_PIN  13 // on BCM13: Pin 33 in the 40 pin GPIO connector.
-    #define M2IN1_PIN 22 // on BCM22: Pin 15 in the 40 pin GPIO connector.
-    #define M2IN2_PIN 23 // on BCM23: Pin 16 in the 40 pin GPIO connector.
-#elif defined(BST760)
-    // BST760 MotorController
-    #define PWM1UP_PIN  12 // on BCM12: Pin 32 in the 40 pin GPIO connector.
-    #define PWM1LOW_PIN 13 // on BCM13: Pin 33 in the 40 pin GPIO connector.
-    #define PWM2UP_PIN  22 // on BCM22: Pin 15 in the 40 pin GPIO connector.
-    #define PWM2LOW_PIN 23 // on BCM23: Pin 16 in the 40 pin GPIO connector.
-#else
-    #error "Undefined Motor Controller"
-#endif
-
-
-#define MIN_ABS_SPEED 0
-
+//==============================================================
 
 //==============================================================
 // Information for connecting servos:
@@ -89,6 +46,49 @@
 // The magnitude of the Earth's magnetic field at its surface
 // ranges from 250 to 650 milli Gauss.
 // ************************************************************
+
+
+#include "mainwindow.h"
+#include <cmath>
+
+#include <QDebug>
+#include <QThread>
+#include <QtNetwork/QTcpServer>
+#include <QtNetwork/QTcpSocket>
+#include <QtNetwork/QHostAddress>
+#include <QtNetwork/QNetworkInterface>
+#include <QtNetwork/QUdpSocket>
+
+#include "PID_v1.h"
+#if defined(L298)
+    #include "MotorController_L298.h"
+#elif defined(BST760)
+    #include "MotorController_BST7960.h"
+#else
+    #error "Undefined Motor Controller"
+#endif
+
+
+#if defined(L298)
+    // L298 MotorController
+    #define PWM1_PIN  12 // on BCM12: Pin 32 in the 40 pin GPIO connector.
+    #define M1IN1_PIN 17 // on BCM17: Pin 11 in the 40 pin GPIO connector.
+    #define M1IN2_PIN 27 // on BCM27: Pin 13 in the 40 pin GPIO connector.
+    #define PWM2_PIN  13 // on BCM13: Pin 33 in the 40 pin GPIO connector.
+    #define M2IN1_PIN 22 // on BCM22: Pin 15 in the 40 pin GPIO connector.
+    #define M2IN2_PIN 23 // on BCM23: Pin 16 in the 40 pin GPIO connector.
+#elif defined(BST760)
+    // BST760 MotorController
+    #define PWM1UP_PIN  12 // on BCM12: Pin 32 in the 40 pin GPIO connector.
+    #define PWM1LOW_PIN 13 // on BCM13: Pin 33 in the 40 pin GPIO connector.
+    #define PWM2UP_PIN  22 // on BCM22: Pin 15 in the 40 pin GPIO connector.
+    #define PWM2LOW_PIN 23 // on BCM23: Pin 16 in the 40 pin GPIO connector.
+#else
+    #error "Undefined Motor Controller"
+#endif
+
+
+#define MIN_ABS_SPEED 0
 
 
 //==============================================================
@@ -127,7 +127,7 @@ MainWindow::MainWindow(int &argc, char **argv)
 {
     bCanContinue = true;
     setpoint = 4.68;
-    samplingFrequency = 300;
+    ahrsSamplingFrequency = 300;
 
     restoreSettings();
 
@@ -138,12 +138,10 @@ MainWindow::MainWindow(int &argc, char **argv)
     pAcc  = new ADXL345(); // init ADXL345
     pGyro = new ITG3200(); // init ITG3200
     pMagn = new HMC5883L();// init HMC5883L
-    connect(pAcc, SIGNAL(error(QString)),
-            this, SLOT(onAHRSerror(QString)));
-    connect(pGyro, SIGNAL(error(QString)),
-            this, SLOT(onAHRSerror(QString)));
-    connect(pMagn, SIGNAL(error(QString)),
-            this, SLOT(onAHRSerror(QString)));
+
+    connect(pAcc, SIGNAL(error(QString)), this, SLOT(onAHRSerror(QString)));
+    connect(pGyro, SIGNAL(error(QString)), this, SLOT(onAHRSerror(QString)));
+    connect(pMagn, SIGNAL(error(QString)), this, SLOT(onAHRSerror(QString)));
 
     pMadgwick = new Madgwick();
 
@@ -158,17 +156,13 @@ MainWindow::MainWindow(int &argc, char **argv)
 #endif
     pPid = new PID(Kp, Ki, Kd, ControllerDirection);
 
-    startupTimer.setSingleShot(true);
-    connect(&startupTimer, SIGNAL(timeout()),
-            this, SLOT(onTimeToStart()));
-    startupTimer.start(1000);
 }
 
 
-void
-MainWindow::onTimeToStart() {
+int
+MainWindow::exec() {
     initAHRSsensor();
-    if(!bCanContinue) return;
+    if(!bCanContinue) return EXIT_FAILURE;
     pPid->SetSampleTime(100); // in ms
     pPid->SetOutputLimits(-255, 255);
     if(bPIDControlInProgress)
@@ -176,30 +170,32 @@ MainWindow::onTimeToStart() {
     else
         pPid->SetMode(MANUAL);
 
-    pMadgwick->begin(samplingFrequency);
+    pMadgwick->begin(ahrsSamplingFrequency);
 
     // Consider to change to QBasicTimer that it's faster than QTimer
     loopTimer.setTimerType(Qt::PreciseTimer);
     connect(&loopTimer, SIGNAL(timeout()),
             this, SLOT(onLoopTimeElapsed()));
 
+    while(!pMagn->isDataReady()) {} // Wait for the slower first...
+    pMagn->ReadScaledAxis(&values[6]);
     while(!pAcc->getInterruptSource(7)) {}
     pAcc->get_Gxyz(&values[0]);
     while(!pGyro->isRawDataReadyOn()) {}
     pGyro->readGyro(&values[3]);
-    while(!pMagn->isDataReady()) {}
-    pMagn->ReadScaledAxis(&values[6]);
 
-    for(int i=0; i<10000; i++) {
+    // Simulate a 180s of Readings to get the Starting Pose
+    for(int i=0; i<180*ahrsSamplingFrequency; i++) {
         pMadgwick->update(values[3], values[4], values[5],
-                values[0], values[1], values[2],
-                values[6], values[7], values[8]);
+                          values[0], values[1], values[2],
+                          values[6], values[7], values[8]);
     }
 
     lastUpdate = micros();
     now = lastUpdate;
-    loopTimer.start(int32_t(1000.0/samplingFrequency+0.5));
+    loopTimer.start(int32_t(1000.0/ahrsSamplingFrequency+0.5));
     qDebug() << QString("Ready to be connected");
+    return QCoreApplication::exec();
 }
 
 
@@ -212,6 +208,11 @@ MainWindow::~MainWindow() {
     if(pTcpServer) {
         pTcpServer->close();
         delete pTcpServer;
+    }
+    if(pUdpSocket) {
+        pUdpSocket->close();
+        delete pUdpSocket;
+        pUdpSocket = nullptr;
     }
     if(pPid)             delete pPid;
     if(pMadgwick)        delete pMadgwick;
@@ -360,7 +361,7 @@ MainWindow::onNewTcpConnection() {
         connect(pTcpServerConnection, SIGNAL(disconnected()),
                 this, SLOT(onTcpClientDisconnected()));
         qDebug() << QString("Connected to: %1")
-                                .arg(pTcpServerConnection->peerAddress().toString());
+                    .arg(pTcpServerConnection->peerAddress().toString());
         t0 = micros();
     }
 }
@@ -374,7 +375,7 @@ MainWindow::onTcpClientDisconnected() {
     loopTimer.stop();
     pGyro->zeroCalibrate(600);
     saveSettings();
-    loopTimer.start(int32_t(1000.0/samplingFrequency+0.5));
+    loopTimer.start(int32_t(1000.0/ahrsSamplingFrequency+0.5));
 }
 
 
@@ -400,7 +401,8 @@ MainWindow::onReadFromServer() {
 //      S           Set Manual Control
 //      P           Send PID Values (Kp, Ki, Kd)
 //      C           Ask Robot Configuration
-//      M           Start Moving (at a given speed Left & Rigth)
+//      M           Manual Move at a given speed Left & Rigth
+//      K           Switch off the Program
 //==============================================================
 void
 MainWindow::executeCommand(QString sMessage) {
@@ -440,6 +442,22 @@ MainWindow::executeCommand(QString sMessage) {
         setpoint = tokens.at(4).toDouble();
         pPid->SetTunings(kp, ki, kd);
     }
+    else if(tokens.at(0) == QString("K")) {
+        pMotorController->stopMoving();
+        loopTimer.stop();
+        saveSettings();
+        if(pTcpServer) {
+            pTcpServer->close();
+            delete pTcpServer;
+            pTcpServer = nullptr;
+        }
+        if(pUdpSocket) {
+            pUdpSocket->close();
+            delete pUdpSocket;
+            pUdpSocket = nullptr;
+        }
+        exit(EXIT_SUCCESS);
+    }
     //qDebug() << "Received: " << sMessage;
 }
 
@@ -450,21 +468,21 @@ MainWindow::periodicUpdateWidgets() {
         if(pTcpServerConnection->isValid()) {
             pMadgwick->getRotation(&q0, &q1, &q2, &q3);
             sMessage = QString("q %1 %2 %3 %4#")
-                     .arg(q0)
-                     .arg(q1)
-                     .arg(q2)
-                     .arg(q3);
+                       .arg(q0)
+                       .arg(q1)
+                       .arg(q2)
+                       .arg(q3);
             double x = double(now-t0)/1000000.0;
             if(bPIDControlInProgress) {
                 sMessage += QString("p %1 %2 %3#")
-                          .arg(x)
-                          .arg(double(input-setpoint))
-                          .arg(double(output/Kp));
+                            .arg(x)
+                            .arg(double(input-setpoint))
+                            .arg(double(output/Kp));
             }
             else {
                 sMessage += QString("p %1 %2#")
-                          .arg(x)
-                          .arg(double(input-setpoint));
+                            .arg(x)
+                            .arg(double(input-setpoint));
             }
             pUdpSocket->writeDatagram(sMessage.toLatin1(),
                                       pTcpServerConnection->peerAddress(),
@@ -520,7 +538,7 @@ MainWindow::onStartStopPushed() {
 //        bRunInProgress = true;
 //        lastUpdate = micros();
 //        now = lastUpdate;
-//        loopTimer.start(int32_t(1000.0/samplingFrequency+0.5));
+//        loopTimer.start(int32_t(1000.0/ahrsSamplingFrequency+0.5));
 //    }
 }
 
@@ -586,12 +604,18 @@ MainWindow::onLoopTimeElapsed() {
     // rate two or three times the output data rate of the sensor.
     //
     // Deliver sensor values at the Madgwick algorithm
-    // in the expected format which is rad/s, m/s² and mG (milliGauss)
+    // in the expected format which is degrees/s, m/s² and mG (milliGauss)
     //==================================================================
+
+    if(pMagn->isDataReady()) { // The Slower Sensor First
+        pMagn->ReadScaledAxis(&values[6]);
+//        if(bMagCalInProgress) {
+//        }
+    }
 
     if(pAcc->getInterruptSource(7)) { // Accelerator Data Ready
         pAcc->get_Gxyz(&values[0]);
-        if(bAccCalInProgress) {
+//        if(bAccCalInProgress) {
 //            double x = (micros()-t0)/1000000.0;
 //            avgX += double(values[0]);
 //            avgY += double(values[1]);
@@ -604,12 +628,12 @@ MainWindow::onLoopTimeElapsed() {
 //                nCurr = 0;
 //            }
 //            avgX = avgY = avgZ = 0.0;
-        }
+//        }
     }
 
     if(pGyro->isRawDataReadyOn()) {
         pGyro->readGyro(&values[3]);
-        if(bGyroCalInProgress) {
+//        if(bGyroCalInProgress) {
 //            angleZ += double(values[5]) * d;
 //            double x = micros();
 //            double d = lastUpdate - x;
@@ -617,24 +641,17 @@ MainWindow::onLoopTimeElapsed() {
 //            d /= 1000000.0;
 //            angleX += double(values[3]) * d;
 //            angleY += double(values[4]) * d;
-        }
+//        }
     }
 
-    if(pMagn->isDataReady()) {
-        pMagn->ReadScaledAxis(&values[6]);
-        if(bMagCalInProgress) {
-        }
-    }
-    now   = micros();
-    delta = float(now-lastUpdate)/1000000.f;
-    pMadgwick->setInvFreq(delta);
+    now        = micros();
+    deltaTime  = float(now-lastUpdate)/1000000.f;
     lastUpdate = now;
+    pMadgwick->setInvFreq(deltaTime);
+
     pMadgwick->update(values[3], values[4], values[5],
                       values[0], values[1], values[2],
                       values[6], values[7], values[8]);
-
-//    pMadgwick->updateIMU(values[3], values[4], values[5],
-//                         values[0], values[1], values[2]);
 
     input  = pMadgwick->getPitch();
     output = pPid->Compute(input, setpoint);

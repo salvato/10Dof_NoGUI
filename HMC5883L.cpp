@@ -46,15 +46,21 @@ bool
 HMC5883L::init() {
     // open device on /dev/i2c-1
     if((fd = open("/dev/i2c-1", O_RDWR)) < 0) {
-        emit error(QString("HMC5883L Error: Couldn't open device %1 (%2)").arg(__FILE__).arg(__LINE__));
+        emit error(QString("HMC5883L Error: Couldn't open device %1 (%2)")
+                   .arg(__FILE__)
+                   .arg(__LINE__));
         return false;
     }
     if(ioctl(fd, I2C_SLAVE, HMC5883L_Address) == -1) {
-        emit error(QString("HMC5883L Errorin ioctl() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        emit error(QString("HMC5883L Errorin ioctl() %1 (%2)")
+                   .arg(__FILE__)
+                   .arg(__LINE__));
         return false;
     }
     if(!isConnected()) {
-        emit error(QString("HMC5883L Errorin Magnetometer does not respond %1 (%2)").arg(__FILE__).arg(__LINE__));
+        emit error(QString("HMC5883L Errorin Magnetometer does not respond %1 (%2)")
+                   .arg(__FILE__)
+                   .arg(__LINE__));
         return false;
     }
     return true;
@@ -107,12 +113,24 @@ HMC5883L::SetScale(int16_t milliGauss) {
         regValue = 0x07;
         m_Scale = 4.35;
     }
-    else
+    else {
+        emit error(QString("HMC5883L Error in Magnetometer: Entered scale %1 was not valid %2 (%3)")
+                   .arg(milliGauss)
+                   .arg(__FILE__)
+                   .arg(__LINE__));
         return ErrorCode_1_Num;
-
+    }
     // Setting is in the top 3 bits of the register.
     regValue = regValue << 5;
     Write(ConfigurationRegisterB, regValue);
+    uint8_t val;
+    Read(ConfigurationRegisterB, 1, &val);
+    if((val&0xe0) != regValue) {
+        emit error(QString("HMC5883L Error in Magnetometer: Scale %1 not correctly set: read %2")
+                   .arg(regValue)
+                   .arg(val&0xe0));
+        return ErrorCode_1_Num;
+    }
     return NoError;
 }
 
@@ -167,7 +185,9 @@ void
 HMC5883L::Write(uint8_t address, uint8_t val) {
     std::array<uint8_t, 2> data{address, val};
     if(write(fd, data.data(), data.size()) != data.size()) {
-        emit error(QString("HMC5883L Error: write() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        emit error(QString("HMC5883L Error: write() %1 (%2)")
+                   .arg(__FILE__)
+                   .arg(__LINE__));
         return;
     }
 }
@@ -176,11 +196,15 @@ HMC5883L::Write(uint8_t address, uint8_t val) {
 void
 HMC5883L::Read(uint8_t address, int16_t length, uint8_t* buffer) {
     if(write(fd, &address, 1) != 1) {
-        emit error(QString("HMC5883L Error: write() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        emit error(QString("HMC5883L Error: write() %1 (%2)")
+                   .arg(__FILE__)
+                   .arg(__LINE__));
         return;
     }
     if(read(fd, buffer, length) != length) {
-        emit error(QString("HMC5883L Error: read() %1 (%2)").arg(__FILE__).arg(__LINE__));
+        emit error(QString("HMC5883L Error: read() %1 (%2)")
+                   .arg(__FILE__)
+                   .arg(__LINE__));
         return;
     }
 }
