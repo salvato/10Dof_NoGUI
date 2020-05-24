@@ -36,4 +36,5 @@ HEADERS += utilities.h
 LIBS += -lpigpiod_if2 # To include libpigpiod_if2.so from /usr/local/lib
 LIBS += -lQt5Network
 
-DISTFILES += .gitignore
+DISTFILES += .gitignore \
+    10_DOF.jpeg
