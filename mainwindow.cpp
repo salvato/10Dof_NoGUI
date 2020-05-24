@@ -213,17 +213,7 @@ MainWindow::exec() {
     now = lastUpdate;
     loopTimer.start(int32_t(1000.0/ahrsSamplingFrequency+0.5));
     sMessage = QString("Ready to be connected");
-    if(pLogFile) {
-        if(pLogFile->isOpen()) {
-            pLogFile->write(sMessage.toUtf8().data());
-            pLogFile->write("\n");
-            pLogFile->flush();
-        }
-        else
-            qDebug() << sMessage;
-    }
-    else
-        qDebug() << sMessage;
+    printMessage(sMessage);
     return QCoreApplication::exec();
 }
 
@@ -259,18 +249,24 @@ MainWindow::~MainWindow() {
 
 
 void
-MainWindow::onAHRSerror(QString sErrorString) {
+MainWindow::printMessage(QString sMessage) {
     if(pLogFile) {
         if(pLogFile->isOpen()) {
-            pLogFile->write(sErrorString.toUtf8().data());
+            pLogFile->write(sMessage.toUtf8().data());
             pLogFile->write("\n");
             pLogFile->flush();
         }
         else
-            qDebug() << sErrorString;
+            qDebug() << sMessage;
     }
     else
-        qDebug() << sErrorString;
+        qDebug() << sMessage;
+}
+
+
+void
+MainWindow::onAHRSerror(QString sErrorString) {
+    printMessage(sErrorString);
     bCanContinue = false;
 }
 
@@ -316,18 +312,7 @@ MainWindow::openTcpSession() {
     pTcpServer = new QTcpServer(this);
     if(!pTcpServer->listen(QHostAddress::Any, serverPort)) {
         QString sMessage = QString("TCP-IP Unable to start listen()");
-        if(pLogFile) {
-            if(pLogFile->isOpen()) {
-                pLogFile->write(sMessage.toUtf8().data());
-                pLogFile->write("\n");
-                pLogFile->flush();
-            }
-            else
-                qDebug() << sMessage;
-        }
-        else
-            qDebug() << sMessage;
-        return false;
+        printMessage(sMessage);
     }
     connect(pTcpServer, SIGNAL(newConnection()),
             this, SLOT(onNewTcpConnection()));
@@ -349,17 +334,7 @@ MainWindow::openTcpSession() {
     QString sMessage = QString("Running TCP-IP server at address %1 port:%2")
                        .arg(ipAddress)
                        .arg(pTcpServer->serverPort());
-    if(pLogFile) {
-        if(pLogFile->isOpen()) {
-            pLogFile->write(sMessage.toUtf8().data());
-            pLogFile->write("\n");
-            pLogFile->flush();
-        }
-        else
-            qDebug() << sMessage;
-    }
-    else
-        qDebug() << sMessage;
+    printMessage(sMessage);
     return true;
 }
 
@@ -415,17 +390,7 @@ MainWindow::onTcpError(QAbstractSocket::SocketError error) {
         sMessage = QString("A temporary error occurred (e.g., operation would block and socket is non-blocking).");
     else if(error == QAbstractSocket::UnknownSocketError)
         sMessage = QString("An unidentified error occurred.");
-    if(pLogFile) {
-        if(pLogFile->isOpen()) {
-            pLogFile->write(sMessage.toUtf8().data());
-            pLogFile->write("\n");
-            pLogFile->flush();
-        }
-        else
-            qDebug() << sMessage;
-    }
-    else
-        qDebug() << sMessage;
+    printMessage(sMessage);
 }
 
 
@@ -441,17 +406,8 @@ MainWindow::onNewTcpConnection() {
                 this, SLOT(onTcpClientDisconnected()));
         sMessage = QString("Connected to: %1")
                     .arg(pTcpServerConnection->peerAddress().toString());
-        if(pLogFile) {
-            if(pLogFile->isOpen()) {
-                pLogFile->write(sMessage.toUtf8().data());
-                pLogFile->write("\n");
-                pLogFile->flush();
-            }
-            else
-                qDebug() << sMessage;
-        }
-        else
-            qDebug() << sMessage;
+        printMessage(sMessage);
+
         t0 = micros();
     }
 }
@@ -462,17 +418,7 @@ MainWindow::onTcpClientDisconnected() {
     QString sClient = pTcpServerConnection->peerAddress().toString();
     pTcpServerConnection = nullptr;
     sMessage = QString("Disconnected from: %1").arg(sClient);
-    if(pLogFile) {
-        if(pLogFile->isOpen()) {
-            pLogFile->write(sMessage.toUtf8().data());
-            pLogFile->write("\n");
-            pLogFile->flush();
-        }
-        else
-            qDebug() << sMessage;
-    }
-    else
-        qDebug() << sMessage;
+    printMessage(sMessage);
     loopTimer.stop();
     pGyro->zeroCalibrate(600);
     saveSettings();

@@ -54,6 +54,7 @@ public slots:
     void onAHRSerror(QString sErrorString);
 
 protected:
+    void printMessage(QString sMessage);
     void initAHRSsensor();
     void initLayout();
     void restoreSettings();
