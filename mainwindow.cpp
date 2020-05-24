@@ -52,6 +52,8 @@
 #include <cmath>
 
 #include <QDebug>
+#include <QFile>
+#include <QStandardPaths>
 #include <QThread>
 #include <QtNetwork/QTcpServer>
 #include <QtNetwork/QTcpSocket>
@@ -126,6 +128,20 @@ MainWindow::MainWindow(int &argc, char **argv)
     , motorSpeedFactorLeft(0.6)
     , motorSpeedFactorRight(0.6)
 {
+    pLogFile = nullptr;
+    QString sLogFileName = QString("10DOFlogfile.txt");
+    QString sLogDir = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+    if(!sLogDir.endsWith(QString("/"))) sLogDir+= QString("/");
+    sLogFileName = sLogDir+sLogFileName;
+    // Open the new log file
+    pLogFile = new QFile(sLogFileName);
+    if (!pLogFile->open(QIODevice::WriteOnly)) {
+        qDebug() << QString("Unable to open file %1: %2.")
+                    .arg(sLogFileName)
+                    .arg(pLogFile->errorString());
+        delete pLogFile;
+        pLogFile = nullptr;
+    }
     bCanContinue = true;
     setpoint = 4.68;
     ahrsSamplingFrequency = 300;
@@ -195,7 +211,18 @@ MainWindow::exec() {
     lastUpdate = micros();
     now = lastUpdate;
     loopTimer.start(int32_t(1000.0/ahrsSamplingFrequency+0.5));
-    qDebug() << QString("Ready to be connected");
+    sMessage = QString("Ready to be connected");
+    if(pLogFile) {
+        if(pLogFile->isOpen()) {
+            pLogFile->write(sMessage.toUtf8().data());
+            pLogFile->write("\n");
+            pLogFile->flush();
+        }
+        else
+            qDebug() << sMessage;
+    }
+    else
+        qDebug() << sMessage;
     return QCoreApplication::exec();
 }
 
@@ -221,12 +248,28 @@ MainWindow::~MainWindow() {
     if(pMagn)            delete pMagn;
     if(pGyro)            delete pGyro;
     if(pAcc)             delete pAcc;
+    if(pLogFile) {
+        if(pLogFile->isOpen()) {
+            pLogFile->flush();
+        }
+        pLogFile->deleteLater();
+    }
 }
 
 
 void
 MainWindow::onAHRSerror(QString sErrorString) {
-    qDebug() << sErrorString;
+    if(pLogFile) {
+        if(pLogFile->isOpen()) {
+            pLogFile->write(sErrorString.toUtf8().data());
+            pLogFile->write("\n");
+            pLogFile->flush();
+        }
+        else
+            qDebug() << sErrorString;
+    }
+    else
+        qDebug() << sErrorString;
     bCanContinue = false;
 }
 
@@ -271,7 +314,18 @@ bool
 MainWindow::openTcpSession() {
     pTcpServer = new QTcpServer(this);
     if(!pTcpServer->listen(QHostAddress::Any, serverPort)) {
-        qDebug() << QString("TCP-IP Unable to start listen()");
+        QString sMessage = QString("TCP-IP Unable to start listen()");
+        if(pLogFile) {
+            if(pLogFile->isOpen()) {
+                pLogFile->write(sMessage.toUtf8().data());
+                pLogFile->write("\n");
+                pLogFile->flush();
+            }
+            else
+                qDebug() << sMessage;
+        }
+        else
+            qDebug() << sMessage;
         return false;
     }
     connect(pTcpServer, SIGNAL(newConnection()),
@@ -291,63 +345,86 @@ MainWindow::openTcpSession() {
     // if we did not find one, use IPv4 localhost
     if(ipAddress.isEmpty())
         ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
-    qDebug() << QString("Running TCP-IP server at address %1 port:%2")
-                            .arg(ipAddress)
-                            .arg(pTcpServer->serverPort());
+    QString sMessage = QString("Running TCP-IP server at address %1 port:%2")
+                       .arg(ipAddress)
+                       .arg(pTcpServer->serverPort());
+    if(pLogFile) {
+        if(pLogFile->isOpen()) {
+            pLogFile->write(sMessage.toUtf8().data());
+            pLogFile->write("\n");
+            pLogFile->flush();
+        }
+        else
+            qDebug() << sMessage;
+    }
+    else
+        qDebug() << sMessage;
     return true;
 }
 
 
 void
 MainWindow::onTcpError(QAbstractSocket::SocketError error) {
+    QString sMessage;
     if(error == QAbstractSocket::ConnectionRefusedError)
-        qDebug() << QString("The connection was refused by the peer (or timed out).");
+        sMessage = QString("The connection was refused by the peer (or timed out).");
     else if(error == QAbstractSocket::RemoteHostClosedError) {
-        qDebug() << QString("The remote host closed the connection.");
+        sMessage = QString("The remote host closed the connection.");
     } else if(error == QAbstractSocket::HostNotFoundError)
-        qDebug() << QString("The host address was not found.");
+        sMessage = QString("The host address was not found.");
     else if(error == QAbstractSocket::SocketAccessError)
-        qDebug() << QString("The socket operation failed because the application lacked the required privileges.");
+        sMessage = QString("The socket operation failed because the application lacked the required privileges.");
     else if(error == QAbstractSocket::SocketResourceError)
-        qDebug() << QString("The local system ran out of resources (e.g., too many sockets).");
+        sMessage = QString("The local system ran out of resources (e.g., too many sockets).");
     else if(error == QAbstractSocket::SocketTimeoutError)
-        qDebug() << QString("The socket operation timed out.");
+        sMessage = QString("The socket operation timed out.");
     else if(error == QAbstractSocket::DatagramTooLargeError)
-        qDebug() << QString("The datagram was larger than the operating system's limit (which can be as low as 8192 bytes).");
+        sMessage = QString("The datagram was larger than the operating system's limit (which can be as low as 8192 bytes).");
     else if(error == QAbstractSocket::NetworkError)
-        qDebug() << QString("An error occurred with the network (e.g., the network cable was accidentally plugged out).");
+        sMessage = QString("An error occurred with the network (e.g., the network cable was accidentally plugged out).");
     else if(error == QAbstractSocket::AddressInUseError)
-        qDebug() << QString("The address specified to QAbstractSocket::bind() is already in use and was set to be exclusive.");
+        sMessage = QString("The address specified to QAbstractSocket::bind() is already in use and was set to be exclusive.");
     else if(error == QAbstractSocket::SocketAddressNotAvailableError)
-        qDebug() << QString("The address specified to QAbstractSocket::bind() does not belong to the host.");
+        sMessage = QString("The address specified to QAbstractSocket::bind() does not belong to the host.");
     else if(error == QAbstractSocket::UnsupportedSocketOperationError)
-        qDebug() << QString("The requested socket operation is not supported by the local operating system (e.g., lack of IPv6 support).");
+        sMessage = QString("The requested socket operation is not supported by the local operating system (e.g., lack of IPv6 support).");
     else if(error == QAbstractSocket::ProxyAuthenticationRequiredError)
-        qDebug() << QString("The socket is using a proxy, and the proxy requires authentication.");
+        sMessage = QString("The socket is using a proxy, and the proxy requires authentication.");
     else if(error == QAbstractSocket::SslHandshakeFailedError)
-        qDebug() << QString("The SSL/TLS handshake failed, so the connection was closed (only used in QSslSocket)");
+        sMessage = QString("The SSL/TLS handshake failed, so the connection was closed (only used in QSslSocket)");
     else if(error == QAbstractSocket::UnfinishedSocketOperationError)
-        qDebug() << QString("Used by QAbstractSocketEngine only, The last operation attempted has not finished yet (still in progress in the background).");
+        sMessage = QString("Used by QAbstractSocketEngine only, The last operation attempted has not finished yet (still in progress in the background).");
     else if(error == QAbstractSocket::ProxyConnectionRefusedError)
-        qDebug() << QString("Could not contact the proxy server because the connection to that server was denied");
+        sMessage = QString("Could not contact the proxy server because the connection to that server was denied");
     else if(error == QAbstractSocket::ProxyConnectionClosedError)
-        qDebug() << QString("The connection to the proxy server was closed unexpectedly (before the connection to the final peer was established)");
+        sMessage = QString("The connection to the proxy server was closed unexpectedly (before the connection to the final peer was established)");
     else if(error == QAbstractSocket::ProxyConnectionTimeoutError)
-        qDebug() << QString("The connection to the proxy server timed out or the proxy server stopped responding in the authentication phase.");
+        sMessage = QString("The connection to the proxy server timed out or the proxy server stopped responding in the authentication phase.");
     else if(error == QAbstractSocket::ProxyNotFoundError)
-        qDebug() << QString("The proxy address set with setProxy() (or the application proxy) was not found.");
+        sMessage = QString("The proxy address set with setProxy() (or the application proxy) was not found.");
     else if(error == QAbstractSocket::ProxyProtocolError)
-        qDebug() << QString("The connection negotiation with the proxy server failed, because the response from the proxy server could not be understood.");
+        sMessage = QString("The connection negotiation with the proxy server failed, because the response from the proxy server could not be understood.");
     else if(error == QAbstractSocket::OperationError)
-        qDebug() << QString("An operation was attempted while the socket was in a state that did not permit it.");
+        sMessage = QString("An operation was attempted while the socket was in a state that did not permit it.");
     else if(error == QAbstractSocket::SslInternalError)
-        qDebug() << QString("The SSL library being used reported an internal error. This is probably the result of a bad installation or misconfiguration of the library.");
+        sMessage = QString("The SSL library being used reported an internal error. This is probably the result of a bad installation or misconfiguration of the library.");
     else if(error == QAbstractSocket::SslInvalidUserDataError)
-        qDebug() << QString("Invalid data (certificate, key, cypher, etc.) was provided and its use resulted in an error in the SSL library.");
+        sMessage = QString("Invalid data (certificate, key, cypher, etc.) was provided and its use resulted in an error in the SSL library.");
     else if(error == QAbstractSocket::TemporaryError)
-        qDebug() << QString("A temporary error occurred (e.g., operation would block and socket is non-blocking).");
+        sMessage = QString("A temporary error occurred (e.g., operation would block and socket is non-blocking).");
     else if(error == QAbstractSocket::UnknownSocketError)
-        qDebug() << QString("An unidentified error occurred.");
+        sMessage = QString("An unidentified error occurred.");
+    if(pLogFile) {
+        if(pLogFile->isOpen()) {
+            pLogFile->write(sMessage.toUtf8().data());
+            pLogFile->write("\n");
+            pLogFile->flush();
+        }
+        else
+            qDebug() << sMessage;
+    }
+    else
+        qDebug() << sMessage;
 }
 
 
@@ -361,8 +438,19 @@ MainWindow::onNewTcpConnection() {
                 this, SLOT(onTcpError(QAbstractSocket::SocketError)));
         connect(pTcpServerConnection, SIGNAL(disconnected()),
                 this, SLOT(onTcpClientDisconnected()));
-        qDebug() << QString("Connected to: %1")
+        sMessage = QString("Connected to: %1")
                     .arg(pTcpServerConnection->peerAddress().toString());
+        if(pLogFile) {
+            if(pLogFile->isOpen()) {
+                pLogFile->write(sMessage.toUtf8().data());
+                pLogFile->write("\n");
+                pLogFile->flush();
+            }
+            else
+                qDebug() << sMessage;
+        }
+        else
+            qDebug() << sMessage;
         t0 = micros();
     }
 }
@@ -372,7 +460,18 @@ void
 MainWindow::onTcpClientDisconnected() {
     QString sClient = pTcpServerConnection->peerAddress().toString();
     pTcpServerConnection = nullptr;
-    qDebug() << QString("Disconnected from: %1").arg(sClient);
+    sMessage = QString("Disconnected from: %1").arg(sClient);
+    if(pLogFile) {
+        if(pLogFile->isOpen()) {
+            pLogFile->write(sMessage.toUtf8().data());
+            pLogFile->write("\n");
+            pLogFile->flush();
+        }
+        else
+            qDebug() << sMessage;
+    }
+    else
+        qDebug() << sMessage;
     loopTimer.stop();
     pGyro->zeroCalibrate(600);
     saveSettings();
@@ -456,6 +555,13 @@ MainWindow::executeCommand(QString sMessage) {
             pUdpSocket->close();
             delete pUdpSocket;
             pUdpSocket = nullptr;
+        }
+        if(pLogFile) {
+            if(pLogFile->isOpen()) {
+                pLogFile->flush();
+            }
+            pLogFile->deleteLater();
+            pLogFile = nullptr;
         }
         exit(EXIT_SUCCESS);
     }

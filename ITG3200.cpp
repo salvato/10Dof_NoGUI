@@ -284,7 +284,6 @@ ITG3200::setOffsets(int16_t _Xoffset, int16_t _Yoffset, int16_t _Zoffset) {
     offsets[0] = _Xoffset;
     offsets[1] = _Yoffset;
     offsets[2] = _Zoffset;
-    qDebug() << "Gyro offsets" << _Xoffset << _Yoffset << _Zoffset;
 }
 
 

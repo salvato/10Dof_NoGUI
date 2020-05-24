@@ -13,6 +13,7 @@
 #include "utilities.h"
 
 
+QT_FORWARD_DECLARE_CLASS(QFile)
 QT_FORWARD_DECLARE_CLASS(PID)
 QT_FORWARD_DECLARE_CLASS(MotorController_L298)
 QT_FORWARD_DECLARE_CLASS(MotorController_BST7960)
@@ -78,6 +79,7 @@ private:
     #error "Undefined Motor Controller"
 #endif
 
+    QFile  *pLogFile;
     QTimer loopTimer;
 
     float ahrsSamplingFrequency;
