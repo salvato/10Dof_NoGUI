@@ -131,7 +131,7 @@ ADXL345::readFrom(byte address, int16_t num, byte _buff[]) {
 // it can be 2, 4, 8 or 16
 void
 ADXL345::getRangeSetting(byte* rangeSetting) {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_DATA_FORMAT, 1, &_b);
     *rangeSetting = _b & 0b00000011;
 }
@@ -140,8 +140,8 @@ ADXL345::getRangeSetting(byte* rangeSetting) {
 // Sets the range setting, possible values are: 2, 4, 8, 16
 void
 ADXL345::setRangeSetting(int16_t val) {
-    byte _s;
-    byte _b;
+    byte _s = 0;
+    byte _b = 0;
 
     switch (val) {
     case 2:
@@ -264,9 +264,9 @@ ADXL345::setTapThreshold(int16_t tapThreshold) {
 // the scale factor is 62.5 mg/LSB
 int16_t
 ADXL345::getTapThreshold() {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_THRESH_TAP, 1, &_b);
-    return int16_t (_b);
+    return int16_t(_b);
 }
 
 
@@ -304,13 +304,13 @@ ADXL345::setAxisOffset(int16_t x, int16_t y, int16_t z) {
 // Gets the OFSX, OFSY and OFSZ bytes
 void
 ADXL345::getAxisOffset(int16_t* x, int16_t* y, int16_t*z) {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_OFSX, 1, &_b);
-    *x = int16_t (_b);
+    *x = int16_t(_b);
     readFrom(ADXL345_OFSY, 1, &_b);
-    *y = int16_t (_b);
+    *y = int16_t(_b);
     readFrom(ADXL345_OFSZ, 1, &_b);
-    *z = int16_t (_b);
+    *z = int16_t(_b);
 }
 
 
@@ -329,9 +329,9 @@ ADXL345::setTapDuration(int16_t tapDuration) {
 
 // Gets the DUR byte
 int16_t ADXL345::getTapDuration() {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_DUR, 1, &_b);
-    return int16_t (_b);
+    return int16_t(_b);
 }
 
 
@@ -350,9 +350,9 @@ ADXL345::setDoubleTapLatency(int16_t floatTapLatency) {
 // Gets the Latent value
 int16_t
 ADXL345::getDoubleTapLatency() {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_LATENT, 1, &_b);
-    return int16_t (_b);
+    return int16_t(_b);
 }
 
 
@@ -371,9 +371,9 @@ ADXL345::setDoubleTapWindow(int16_t floatTapWindow) {
 // Gets the Window register
 int16_t
 ADXL345::getDoubleTapWindow() {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_WINDOW, 1, &_b);
-    return int16_t (_b);
+    return int16_t(_b);
 }
 
 
@@ -393,9 +393,9 @@ ADXL345::setActivityThreshold(int16_t activityThreshold) {
 // Gets the THRESH_ACT byte
 int16_t
 ADXL345::getActivityThreshold() {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_THRESH_ACT, 1, &_b);
-    return int16_t (_b);
+    return int16_t(_b);
 }
 
 
@@ -415,9 +415,9 @@ ADXL345::setInactivityThreshold(int16_t inactivityThreshold) {
 // Gets the THRESH_INACT byte
 int16_t
 ADXL345::getInactivityThreshold() {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_THRESH_INACT, 1, &_b);
-    return int16_t (_b);
+    return int16_t(_b);
 }
 
 
@@ -436,9 +436,9 @@ ADXL345::setTimeInactivity(int16_t timeInactivity) {
 // Gets the TIME_INACT register
 int16_t
 ADXL345::getTimeInactivity() {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_TIME_INACT, 1, &_b);
-    return int16_t (_b);
+    return int16_t(_b);
 }
 
 
@@ -458,9 +458,9 @@ ADXL345::setFreeFallThreshold(int16_t freeFallThreshold) {
 // Gets the THRESH_FF register.
 int16_t
 ADXL345::getFreeFallThreshold() {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_THRESH_FF, 1, &_b);
-    return int16_t (_b);
+    return int16_t(_b);
 }
 
 
@@ -479,9 +479,9 @@ ADXL345::setFreeFallDuration(int16_t freeFallDuration) {
 // Gets the TIME_FF register.
 int16_t
 ADXL345::getFreeFallDuration() {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_TIME_FF, 1, &_b);
-    return int16_t (_b);
+    return int16_t(_b);
 }
 
 
@@ -685,16 +685,16 @@ ADXL345::setLowPower(bool state) {
 
 float
 ADXL345::getRate(){
-    byte _b;
-    readFrom(ADXL345_BW_RATE, 1, &_b);
-    _b &= 0b00001111;
-    return (pow(2,((int) _b)-6)) * 6.25;
+    byte b = 0;
+    readFrom(ADXL345_BW_RATE, 1, &b);
+    b &= 0b00001111;
+    return (pow(2,((int)b)-6)) * 6.25;
 }
 
 
 void
 ADXL345::setRate(float rate){
-    byte _b,_s;
+    byte _b = 0, _s = 0;
     int16_t v = (int16_t) (rate / 6.25);
     int16_t r = 0;
     while(v >>= 1) {
@@ -722,7 +722,7 @@ ADXL345::set_bw(byte bw_code){
 
 byte
 ADXL345::get_bw_code(){
-    byte bw_code;
+    byte bw_code = 0;
     readFrom(ADXL345_BW_RATE, 1, &bw_code);
     return bw_code;
 }
@@ -730,7 +730,7 @@ ADXL345::get_bw_code(){
 
 byte
 ADXL345::getInterruptSource() {
-    byte _b;
+    byte _b = 0;
     readFrom(ADXL345_INT_SOURCE, 1, &_b);
     return _b;
 }
@@ -770,7 +770,7 @@ ADXL345::setInterrupt(byte interruptBit, bool state) {
 
 void
 ADXL345::setRegisterBit(byte regAdress, int16_t bitPos, bool state) {
-    byte _b;
+    byte _b = 0;
     readFrom(regAdress, 1, &_b);
     if (state) {
         _b |= (1 << bitPos);  // forces nth bit of _b to be 1.  all other bits left alone.
@@ -784,7 +784,7 @@ ADXL345::setRegisterBit(byte regAdress, int16_t bitPos, bool state) {
 
 bool
 ADXL345::getRegisterBit(byte regAdress, int16_t bitPos) {
-    byte _b;
+    byte _b=0;
     readFrom(regAdress, 1, &_b);
     return ((_b >> bitPos) & 1);
 }
@@ -794,7 +794,7 @@ ADXL345::getRegisterBit(byte regAdress, int16_t bitPos) {
 // this can be used to manually to check the current configuration of the device
 void
 ADXL345::printAllRegister() {
-    byte _b;
+    byte _b = 0;
     QString sString;
     readFrom(0x00, 1, &_b);
     sString = QString("0x00: %1\r\n").arg(_b, 0, 2, QLatin1Char('0'));

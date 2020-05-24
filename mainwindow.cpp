@@ -69,21 +69,19 @@
 #endif
 
 
-#if defined(L298)
-    // L298 MotorController
+#if defined(L298) // L298 MotorController
     #define PWM1_PIN  12 // on BCM12: Pin 32 in the 40 pin GPIO connector.
     #define M1IN1_PIN 17 // on BCM17: Pin 11 in the 40 pin GPIO connector.
     #define M1IN2_PIN 27 // on BCM27: Pin 13 in the 40 pin GPIO connector.
     #define PWM2_PIN  13 // on BCM13: Pin 33 in the 40 pin GPIO connector.
     #define M2IN1_PIN 22 // on BCM22: Pin 15 in the 40 pin GPIO connector.
     #define M2IN2_PIN 23 // on BCM23: Pin 16 in the 40 pin GPIO connector.
-#elif defined(BST760)
-    // BST760 MotorController
+#elif defined(BST760) // BST760 MotorController
     #define PWM1UP_PIN  12 // on BCM12: Pin 32 in the 40 pin GPIO connector.
     #define PWM1LOW_PIN 13 // on BCM13: Pin 33 in the 40 pin GPIO connector.
     #define PWM2UP_PIN  22 // on BCM22: Pin 15 in the 40 pin GPIO connector.
     #define PWM2LOW_PIN 23 // on BCM23: Pin 16 in the 40 pin GPIO connector.
-#else
+#else // No MotorController defined
     #error "Undefined Motor Controller"
 #endif
 
@@ -97,6 +95,9 @@
 //      q               Quaternion Value
 //      p               PID Values (time, input & output)
 //      c               Robot Configuration Values
+//      a               Accelerator  Raw Values
+//      g               Gyroscope    Raw Values
+//      m               Magnetometer Raw Values
 //==============================================================
 
 
@@ -139,17 +140,17 @@ MainWindow::MainWindow(int &argc, char **argv)
     pGyro = new ITG3200(); // init ITG3200
     pMagn = new HMC5883L();// init HMC5883L
 
-    connect(pAcc, SIGNAL(error(QString)), this, SLOT(onAHRSerror(QString)));
+    connect(pAcc,  SIGNAL(error(QString)), this, SLOT(onAHRSerror(QString)));
     connect(pGyro, SIGNAL(error(QString)), this, SLOT(onAHRSerror(QString)));
     connect(pMagn, SIGNAL(error(QString)), this, SLOT(onAHRSerror(QString)));
 
     pMadgwick = new Madgwick();
 
-#if defined(L298)
+#if defined(L298) // L298 MotorController
     pMotorController = new MotorController_L298(PWM1_PIN, M1IN1_PIN, M1IN2_PIN,
                                                 PWM2_PIN, M2IN1_PIN, M2IN2_PIN,
                                                 motorSpeedFactorLeft, motorSpeedFactorRight);
-#elif defined(BST760)
+#elif defined(BST760) // BST760 MotorController
     pMotorController = new MotorController_BST7960(PWM1UP_PIN, PWM1LOW_PIN,
                                                    PWM2UP_PIN, PWM2LOW_PIN,
                                                    motorSpeedFactorLeft, motorSpeedFactorRight);

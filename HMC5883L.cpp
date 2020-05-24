@@ -123,12 +123,12 @@ HMC5883L::SetScale(int16_t milliGauss) {
     // Setting is in the top 3 bits of the register.
     regValue = regValue << 5;
     Write(ConfigurationRegisterB, regValue);
-    uint8_t val;
+    uint8_t val = 0;
     Read(ConfigurationRegisterB, 1, &val);
-    if((val&0xe0) != regValue) {
+    if((val & 0xe0) != regValue) {
         emit error(QString("HMC5883L Error in Magnetometer: Scale %1 not correctly set: read %2")
                    .arg(regValue)
-                   .arg(val&0xe0));
+                   .arg(val & 0xe0));
         return ErrorCode_1_Num;
     }
     return NoError;
@@ -152,7 +152,7 @@ HMC5883L::isDataReady() {
 
 void
 HMC5883L::ReadRawAxis(MagnetometerRaw* raw) {
-    uint8_t buffer[6];
+    uint8_t buffer[6] = {0};
     Read(DataRegisterBegin, 6, buffer);
     // Attention to the Y and Z order. It is the specified one: see datasheet !!!
     raw->XAxis = (buffer[0] << 8) | buffer[1];
