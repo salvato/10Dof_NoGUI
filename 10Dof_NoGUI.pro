@@ -37,4 +37,5 @@ LIBS += -lpigpiod_if2 # To include libpigpiod_if2.so from /usr/local/lib
 LIBS += -lQt5Network
 
 DISTFILES += .gitignore \
-    10_DOF.jpeg
+    10_DOF.jpeg \
+    10_DOF.png
