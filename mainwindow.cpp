@@ -408,15 +408,15 @@ MainWindow::onReadFromServer() {
 void
 MainWindow::executeCommand(QString sMessage) {
     QStringList tokens = sMessage.split(' ');
-    if(tokens.at(0) == QString("G")) {
+    if(tokens.at(0) == QString("G")) { // Set PID Control On
         bPIDControlInProgress = true;
         pPid->SetMode(AUTOMATIC);
     }
-    else if(tokens.at(0) == QString("S")) {
+    else if(tokens.at(0) == QString("S")) { // Set PID Control Off
         bPIDControlInProgress = false;
         pPid->SetMode(MANUAL);
     }
-    else if(tokens.at(0) == QString("C")) {
+    else if(tokens.at(0) == QString("C")) { // Send Robot Configuration
         if(pTcpServerConnection)
             if(pTcpServerConnection->isValid()) {
                 sMessage = QString("c %1 %2 %3 %4 %5 %6#")
@@ -429,13 +429,13 @@ MainWindow::executeCommand(QString sMessage) {
                 pTcpServerConnection->write(sMessage.toLatin1());
             }
     }
-    else if(tokens.at(0) == QString("M")) {
+    else if(tokens.at(0) == QString("M")) { // Start Manual Move
         if(tokens.length() < 3) return;
         double vLeft  = tokens.at(1).toDouble();
         double vRight = tokens.at(2).toDouble();
         pMotorController->move(vLeft, vRight, 0);
     }
-    else if(tokens.at(0) == QString("P")) {
+    else if(tokens.at(0) == QString("P")) {// Set PID Parameters
         if(tokens.length() < 5) return;
         double kp = tokens.at(1).toDouble();
         double ki = tokens.at(2).toDouble();
@@ -443,7 +443,7 @@ MainWindow::executeCommand(QString sMessage) {
         setpoint = tokens.at(4).toDouble();
         pPid->SetTunings(kp, ki, kd);
     }
-    else if(tokens.at(0) == QString("K")) {
+    else if(tokens.at(0) == QString("K")) { // Close Program
         pMotorController->stopMoving();
         loopTimer.stop();
         saveSettings();
@@ -460,36 +460,6 @@ MainWindow::executeCommand(QString sMessage) {
         exit(EXIT_SUCCESS);
     }
     //qDebug() << "Received: " << sMessage;
-}
-
-
-void
-MainWindow::periodicUpdateWidgets() {
-    if(pTcpServerConnection) {
-        if(pTcpServerConnection->isValid()) {
-            pMadgwick->getRotation(&q0, &q1, &q2, &q3);
-            sMessage = QString("q %1 %2 %3 %4#")
-                       .arg(q0)
-                       .arg(q1)
-                       .arg(q2)
-                       .arg(q3);
-            double x = double(now-t0)/1000000.0;
-            if(bPIDControlInProgress) {
-                sMessage += QString("p %1 %2 %3#")
-                            .arg(x)
-                            .arg(double(input-setpoint))
-                            .arg(double(output/Kp));
-            }
-            else {
-                sMessage += QString("p %1 %2#")
-                            .arg(x)
-                            .arg(double(input-setpoint));
-            }
-            pUdpSocket->writeDatagram(sMessage.toLatin1(),
-                                      pTcpServerConnection->peerAddress(),
-                                      udpPort);
-        }
-    }
 }
 
 
@@ -610,46 +580,21 @@ MainWindow::onLoopTimeElapsed() {
 
     if(pMagn->isDataReady()) { // The Slower Sensor First
         pMagn->ReadScaledAxis(&values[6]);
-//        if(bMagCalInProgress) {
-//        }
     }
 
     if(pAcc->getInterruptSource(7)) { // Accelerator Data Ready
         pAcc->get_Gxyz(&values[0]);
-//        if(bAccCalInProgress) {
-//            double x = (micros()-t0)/1000000.0;
-//            avgX += double(values[0]);
-//            avgY += double(values[1]);
-//            avgZ += double(values[2]);
-//            nCurr++;
-//            if(nCurr == nAvg) {
-//                avgX /= double(nAvg);
-//                avgY /= double(nAvg);
-//                avgZ /= double(nAvg);
-//                nCurr = 0;
-//            }
-//            avgX = avgY = avgZ = 0.0;
-//        }
     }
 
-    if(pGyro->isRawDataReadyOn()) {
+    if(pGyro->isRawDataReadyOn()) { // Gyroscope Data Ready
         pGyro->readGyro(&values[3]);
-//        if(bGyroCalInProgress) {
-//            angleZ += double(values[5]) * d;
-//            double x = micros();
-//            double d = lastUpdate - x;
-//            x = (x-t0)/1000000.0;
-//            d /= 1000000.0;
-//            angleX += double(values[3]) * d;
-//            angleY += double(values[4]) * d;
-//        }
     }
 
     now        = micros();
     deltaTime  = float(now-lastUpdate)/1000000.f;
     lastUpdate = now;
-    pMadgwick->setInvFreq(deltaTime);
 
+    pMadgwick->setInvFreq(deltaTime);
     pMadgwick->update(values[3], values[4], values[5],
                       values[0], values[1], values[2],
                       values[6], values[7], values[8]);
@@ -660,3 +605,34 @@ MainWindow::onLoopTimeElapsed() {
     periodicUpdateWidgets();
 
 }
+
+
+void
+MainWindow::periodicUpdateWidgets() {
+    if(pTcpServerConnection) {
+        if(pTcpServerConnection->isValid()) {
+            pMadgwick->getRotation(&q0, &q1, &q2, &q3);
+            sMessage = QString("q %1 %2 %3 %4#")
+                       .arg(q0)
+                       .arg(q1)
+                       .arg(q2)
+                       .arg(q3);
+            double x = double(now-t0)/1000000.0;
+            if(bPIDControlInProgress) {
+                sMessage += QString("p %1 %2 %3#")
+                            .arg(x)
+                            .arg(double(input-setpoint))
+                            .arg(double(output/Kp));
+            }
+            else {
+                sMessage += QString("p %1 %2#")
+                            .arg(x)
+                            .arg(double(input-setpoint));
+            }
+            pUdpSocket->writeDatagram(sMessage.toLatin1(),
+                                      pTcpServerConnection->peerAddress(),
+                                      udpPort);
+        }
+    }
+}
+
