@@ -113,6 +113,7 @@ MainWindow::MainWindow(int &argc, char **argv)
     , pMadgwick(nullptr)
     , pPid(nullptr)
     , pMotorController(nullptr)
+    , pLogFile(nullptr)
     // Status Variables
     , bPIDControlInProgress(false)
     , bAccCalInProgress(false)
@@ -128,12 +129,11 @@ MainWindow::MainWindow(int &argc, char **argv)
     , motorSpeedFactorLeft(0.6)
     , motorSpeedFactorRight(0.6)
 {
-    pLogFile = nullptr;
+    // Open the log file
     QString sLogFileName = QString("10DOFlogfile.txt");
     QString sLogDir = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
     if(!sLogDir.endsWith(QString("/"))) sLogDir+= QString("/");
     sLogFileName = sLogDir+sLogFileName;
-    // Open the new log file
     pLogFile = new QFile(sLogFileName);
     if (!pLogFile->open(QIODevice::WriteOnly)) {
         qDebug() << QString("Unable to open file %1: %2.")
@@ -142,6 +142,7 @@ MainWindow::MainWindow(int &argc, char **argv)
         delete pLogFile;
         pLogFile = nullptr;
     }
+
     bCanContinue = true;
     setpoint = 4.68;
     ahrsSamplingFrequency = 300;
