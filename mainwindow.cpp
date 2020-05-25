@@ -144,7 +144,7 @@ MainWindow::MainWindow(int &argc, char **argv)
     }
 
     bCanContinue = true;
-    setpoint = 4.68;
+    setpoint = 0.0;
     ahrsSamplingFrequency = 300;
 
     restoreSettings();
@@ -503,6 +503,8 @@ MainWindow::executeCommand(QString sMessage) {
             delete pUdpSocket;
             pUdpSocket = nullptr;
         }
+        sMessage = QString("Program Regularly Switched Off. Bye");
+        printMessage(sMessage);
         if(pLogFile) {
             if(pLogFile->isOpen()) {
                 pLogFile->flush();
@@ -518,7 +520,34 @@ MainWindow::executeCommand(QString sMessage) {
 
 bool
 MainWindow::isStationary() {
-    return false;
+    uint16_t nSamples = 600;
+    QVector<double> accVal;
+    double avg[3] = {0};
+    for(uint16_t i=0; i<nSamples; i++) {
+        if(pAcc->getInterruptSource(7)) { // Accelerator Data Ready
+            pAcc->get_Gxyz(&values[0]);
+        }
+        avg[0] += values[0];
+        avg[1] += values[1];
+        avg[2] += values[2];
+        accVal.append(sqrt(values[0]*values[0] +
+                           values[1]*values[1] +
+                           values[2]*values[2])
+                     );
+    }
+    avg[0] /= double(nSamples);
+    avg[1] /= double(nSamples);
+    avg[2] /= double(nSamples);
+    double average = sqrt((avg[0]*avg[0] + avg[1]*avg[1] + avg[2]*avg[2]));
+//    qDebug() << "Acc Avg=" << average;
+    double sigma = 0;
+    for(uint16_t i=0; i<nSamples; i++) {
+        sigma += pow((accVal.at(i)-average), 2.0);
+    }
+    sigma /= double(nSamples);
+//    qDebug() << "Acc Sgm=" << sqrt(sigma);
+    // Noise Level (from datasheet = 1.1 LSB (3.9mg/LSB) )
+    return sigma < 3.0*0.0039;
 }
 
 
@@ -530,11 +559,20 @@ MainWindow::initAHRSsensor() {
 
     if(!pGyro->init(ITG3200_DEF_ADDR)) return;
     if(isStationary()) { // Gyro calibration done only when stationary
-        QThread::msleep(1000);
         pGyro->zeroCalibrate(600); // calibrate the ITG3200
+        sMessage = QString("Gyro Offsets from calibration: %1 %2 %3")
+                .arg(pGyro->offsets[0])
+                .arg(pGyro->offsets[1])
+                .arg(pGyro->offsets[2]);
+        printMessage(sMessage);
     }
     else {
         pGyro->setOffsets(GyroXOffset, GyroYOffset, GyroZOffset);
+        sMessage = QString("Gyro Offsets from saved values: %1 %2 %3")
+                .arg(pGyro->offsets[0])
+                .arg(pGyro->offsets[1])
+                .arg(pGyro->offsets[2]);
+        printMessage(sMessage);
     }
 
     if(!pMagn->init()) return;
