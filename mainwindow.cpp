@@ -90,7 +90,7 @@
 
 #define MIN_ABS_SPEED        0
 
-#define SAMPLING_FREQUENCY 600
+#define SAMPLING_FREQUENCY 100
 
 
 //==============================================================
@@ -104,7 +104,8 @@
 //      m               Magnetometer Raw Values
 //==============================================================
 
-
+double times[100];
+int indexTime = 0;
 
 
 MainWindow::MainWindow(int &argc, char **argv)
@@ -671,10 +672,14 @@ MainWindow::onLoopTimeElapsed() {
     // in the expected format which is degrees/s, m/s² and mG (milliGauss)
     //==================================================================
 
-
     now        = micros();
     deltaTime  = float(now-lastUpdate)/1000000.f;
+
     lastUpdate = now;
+
+    if(pMagn->isDataReady()) { // The Slower Sensor First
+        pMagn->ReadScaledAxis(&values[6]);
+    }
 
     if(pAcc->getInterruptSource(7)) { // Accelerator Data Ready
         pAcc->get_Gxyz(&values[0]);
@@ -682,10 +687,6 @@ MainWindow::onLoopTimeElapsed() {
 
     if(pGyro->isRawDataReadyOn()) { // Gyroscope Data Ready
         pGyro->readGyro(&values[3]);
-    }
-
-    if(pMagn->isDataReady()) { // The Slower Sensor First
-        pMagn->ReadScaledAxis(&values[6]);
     }
 
     pMadgwick->setInvFreq(deltaTime);
