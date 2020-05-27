@@ -88,7 +88,9 @@
 #endif
 
 
-#define MIN_ABS_SPEED 0
+#define MIN_ABS_SPEED        0
+
+#define SAMPLING_FREQUENCY 600
 
 
 //==============================================================
@@ -145,7 +147,7 @@ MainWindow::MainWindow(int &argc, char **argv)
 
     bCanContinue = true;
     setpoint = 0.0;
-    ahrsSamplingFrequency = 300;
+    ahrsSamplingFrequency = SAMPLING_FREQUENCY;
 
     restoreSettings();
 
@@ -669,9 +671,10 @@ MainWindow::onLoopTimeElapsed() {
     // in the expected format which is degrees/s, m/s² and mG (milliGauss)
     //==================================================================
 
-    if(pMagn->isDataReady()) { // The Slower Sensor First
-        pMagn->ReadScaledAxis(&values[6]);
-    }
+
+    now        = micros();
+    deltaTime  = float(now-lastUpdate)/1000000.f;
+    lastUpdate = now;
 
     if(pAcc->getInterruptSource(7)) { // Accelerator Data Ready
         pAcc->get_Gxyz(&values[0]);
@@ -681,9 +684,9 @@ MainWindow::onLoopTimeElapsed() {
         pGyro->readGyro(&values[3]);
     }
 
-    now        = micros();
-    deltaTime  = float(now-lastUpdate)/1000000.f;
-    lastUpdate = now;
+    if(pMagn->isDataReady()) { // The Slower Sensor First
+        pMagn->ReadScaledAxis(&values[6]);
+    }
 
     pMadgwick->setInvFreq(deltaTime);
     pMadgwick->update(values[3], values[4], values[5],

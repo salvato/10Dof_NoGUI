@@ -299,9 +299,9 @@ ITG3200::zeroCalibrate(uint16_t totSamples) {
         tmpOffsets[1] += xyz[1];
         tmpOffsets[2] += xyz[2];
     }
-    setOffsets(-int16_t(tmpOffsets[0]/totSamples),
-               -int16_t(tmpOffsets[1]/totSamples),
-               -int16_t(tmpOffsets[2]/totSamples));
+    setOffsets(-int16_t(tmpOffsets[0]/totSamples+0.5),
+               -int16_t(tmpOffsets[1]/totSamples+0.5),
+               -int16_t(tmpOffsets[2]/totSamples+0.5));
 }
 
 
