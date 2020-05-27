@@ -674,8 +674,8 @@ MainWindow::onLoopTimeElapsed() {
 
     now        = micros();
     deltaTime  = float(now-lastUpdate)/1000000.f;
-
     lastUpdate = now;
+    pMadgwick->setInvFreq(deltaTime);
 
     if(pMagn->isDataReady()) { // The Slower Sensor First
         pMagn->ReadScaledAxis(&values[6]);
@@ -689,7 +689,6 @@ MainWindow::onLoopTimeElapsed() {
         pGyro->readGyro(&values[3]);
     }
 
-    pMadgwick->setInvFreq(deltaTime);
     pMadgwick->update(values[3], values[4], values[5],
                       values[0], values[1], values[2],
                       values[6], values[7], values[8]);
