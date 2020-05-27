@@ -693,7 +693,9 @@ MainWindow::onLoopTimeElapsed() {
                       values[0], values[1], values[2],
                       values[6], values[7], values[8]);
 
-    input  = pMadgwick->getPitch();
+    //input  = pMadgwick->getPitch();
+    //input  = pMadgwick->getYaw();
+    input  = pMadgwick->getRoll();
     output = pPid->Compute(input, setpoint);
     pMotorController->move(output, MIN_ABS_SPEED);
     periodicUpdateWidgets();
